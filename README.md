@@ -60,6 +60,8 @@ The default crew is Chief, Researcher, Developer, and Reviewer. Built-in presets
 
 Applying a preset archives the current crew and starts fresh conversations; it preserves project files and task history. Finish or cancel active work first. Use `/undo` to restore the previous crew. Use `/roles list` and `/crew add NAME --role ROLE` to add a specialist without replacing your crew. The command reference explains access and preset behavior.
 
+**The web preset is optional.** The [todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) uses the default crew, so skip `/preset apply web` for that sample. If you apply `web`, use its `project-lead`, `frontend-dev`, and `qa-reviewer` names where the walkthrough shows `chief`, `developer`, and `reviewer`.
+
 ## Chat, Crew Chat, and Activity
 
 Chat is a direct conversation with one teammate. Crew Chat is for shared read-only discussions. Activity follows work across the team. Switch views with F2; use Tab to cycle teammates and Crew Chat. PgUp/PgDn scroll while work continues.
