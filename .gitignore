@@ -1,0 +1,17 @@
+.pongkan-crew/
+.todo-scaffold/
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tsbuildinfo
+Thumbs.db
+Desktop.ini
