@@ -44,12 +44,9 @@ For the full command list and examples, see the [command reference](docs/COMMAND
 
 The walkthrough demonstrates a local-only todo app built with Next.js and shadcn/ui preset `b0`, using browser storage. See the [todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) for setup and the crew prompts.
 
-[Open or download the MP4](video/todo-result.mp4).
+![Animated preview of the local todo website](video/todo-result.gif)
 
-<video controls preload="metadata" width="100%">
-  <source src="video/todo-result.mp4" type="video/mp4">
-  Your Markdown viewer cannot play this video inline. [Open the MP4](video/todo-result.mp4).
-</video>
+[Open or download the full MP4](video/todo-result.mp4).
 
 ## Choose a crew
 

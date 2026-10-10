@@ -6,14 +6,11 @@
 
 Build a local todo website with **Next.js, shadcn/ui preset `b0`, and browser `localStorage`**. Choose either one teammate or the coordinated crew flow below. Both must follow the generated design system.
 
-## Result video
+## Result preview
 
-[Open or download `todo-result.mp4`](../video/todo-result.mp4).
+![Animated preview of the local todo website](../video/todo-result.gif)
 
-<video controls preload="metadata" width="100%">
-  <source src="../video/todo-result.mp4" type="video/mp4">
-  Your Markdown viewer cannot play this video inline. [Open the video file](../video/todo-result.mp4).
-</video>
+[Open or download the full MP4](../video/todo-result.mp4).
 
 Use **Next.js as the overall application framework** and **shadcn/ui preset `b0` for the interface components and design system**. Initialize them with `npx shadcn@latest init --preset b0 --template next` using the folder instructions below.
 
