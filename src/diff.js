@@ -6,6 +6,7 @@ import { promisify } from 'node:util';
 const exec = promisify(execFile);
 const OMIT = new Set(['.git', '.pongkan-crew', 'node_modules', '.venv', 'venv', 'dist', 'build', 'target', '.next', '__pycache__']);
 const MAX_FILE = 128 * 1024, MAX_TOTAL = 4 * 1024 * 1024, MAX_DIFF = 200000;
+const sensitive = name => /^(?:\.env(?:\..*)?|\.npmrc|\.pypirc|credentials(?:\.json)?|id_rsa|id_ed25519)$/i.test(name) || /\.(?:pem|key|p12|pfx)$/i.test(name) || ['.aws', '.ssh', '.codex', '.agents'].includes(name.toLowerCase());
 function textFile(file) {
   if (lstatSync(file).isSymbolicLink() || statSync(file).size > MAX_FILE) return null;
   const data = readFileSync(file);
@@ -22,7 +23,7 @@ export function captureWorkspace(folder) {
     catch { skipped.push(relative(folder, directory)); return; }
     for (const entry of entries) {
       if (++scanned > 10000) { skipped.push('Traversal limit'); break; }
-      if (OMIT.has(entry.name) || entry.isSymbolicLink()) continue;
+      if (OMIT.has(entry.name) || sensitive(entry.name) || entry.isSymbolicLink()) continue;
       const file = join(directory, entry.name);
       const name = relative(folder, file).split(sep).join('/');
       if (entry.isDirectory()) visit(file, depth + 1);
@@ -74,7 +75,7 @@ export async function gitDiff(folder) {
   const names = (await git(['ls-files', '--others', '--exclude-standard', '-z', '--', '.'])).split('\0').filter(Boolean);
   const additions = [];
   for (const name of names.slice(0, 200)) {
-    if (name.split('/').some(part => OMIT.has(part))) continue;
+    if (name.split('/').some(part => OMIT.has(part) || sensitive(part))) continue;
     const file = join(root, name);
     try {
       const rel = relative(root, realpathSync(file));

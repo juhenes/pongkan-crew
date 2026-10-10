@@ -134,18 +134,18 @@ test('invalid stored members do not get overwritten', t => {
 test('remove and clear archive recoverable snapshots across restart', t => {
   const folder = setup(t);
   const crew = new Crew(folder);
-  crew.member('chief').threadId = 'original';
-  crew.member('chief').messages.push({ role: 'user', text: 'Keep me' });
+  crew.member('researcher').threadId = 'original';
+  crew.member('researcher').messages.push({ role: 'user', text: 'Keep me' });
   crew.save();
-  const app = { crew, selected: 'chief', notice: '' };
+  const app = { crew, selected: 'researcher', notice: '' };
   execute(app, '/clear');
-  assert.equal(crew.member('chief').messages.length, 0);
+  assert.equal(crew.member('researcher').messages.length, 0);
   execute(app, '/undo');
-  assert.equal(crew.member('chief').messages[0].text, 'Keep me');
-  execute(app, '/crew remove chief');
+  assert.equal(crew.member('researcher').messages[0].text, 'Keep me');
+  execute(app, '/crew remove researcher');
   const restored = new Crew(folder);
   execute({ crew: restored, selected: 'developer' }, '/undo');
-  assert.equal(restored.member('chief').threadId, 'original');
+  assert.equal(restored.member('researcher').threadId, 'original');
 });
 
 test('undo restores only affected teammate and preserves later messages elsewhere', t => {

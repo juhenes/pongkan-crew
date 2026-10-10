@@ -100,3 +100,25 @@ test('Crew Chat and workflow planning use each assigned teammate model', async t
   assert.ok(calls.length >= 5);
   assert.ok(calls.every(args => args.includes('test-model') && args.includes('model_reasoning_effort="high"')));
 });
+
+test('model list separates choices and provides usable all-crew and selected-member examples', async () => {
+  const { modelCatalogLines } = await import('../src/models.js');
+  const lines = modelCatalogLines([
+    { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', efforts: ['low', 'medium', 'high'] },
+    { id: 'gpt-6-astra', name: 'gpt-6-astra', efforts: ['high'] },
+  ], 'frontend-dev');
+  const text = lines.join('\n');
+  assert.match(text, /\/model set all gpt-6\.1-sol medium/);
+  assert.match(text, /\/model set frontend-dev gpt-6\.1-sol medium/);
+  assert.match(text, /\/model set frontend-dev gpt-6-astra high/);
+  assert.match(text, /\n\ngpt-6-astra\n/);
+  assert.match(text, /\/model reset all/);
+  assert.ok(!text.includes('NAME|all MODEL'));
+});
+
+test('model examples omit effort when the catalog does not list supported efforts', async () => {
+  const { modelCatalogLines } = await import('../src/models.js');
+  const lines = modelCatalogLines([{ id: 'custom-model', name: 'custom-model', efforts: [] }], 'developer');
+  assert.ok(lines.includes('  One teammate: /model set developer custom-model'));
+  assert.match(modelCatalogLines([], 'developer').join('\n'), /No readable model cache/);
+});

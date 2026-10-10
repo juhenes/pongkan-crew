@@ -62,7 +62,7 @@ test('sidebar keeps selected teammate visible in a small terminal with a large c
   const crew = new Crew(folder(t));
   for (let i = 0; i < 15; i++) crew.add(`agent-${i}`, 'Assist');
   const output = screen(crew, 'agent-14', '', '', 100, 24);
-  assert.match(output, /> agent-14/);
+  assert.match(output, /> Agent-14/);
 });
 
 test('working conversations show animated activity and remove it when finished', t => {

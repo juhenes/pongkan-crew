@@ -60,6 +60,8 @@ The default crew is Chief, Researcher, Developer, and Reviewer. Built-in presets
 
 Applying a preset archives the crew and starts fresh conversations, preserving project files and task history. Finish or cancel active work first; `/undo` restores the previous crew. To add one specialist instead, use `/roles list` and `/crew add NAME --role ROLE`.
 
+The default crew tracks Chief and Reviewer as its coordinators. Renaming either preserves routing, and Reviewer remains read-only. Coordinators cannot be removed directly. Existing default crews upgrade automatically when reopened; see [upgrading and recovery](docs/UPGRADING.md) for legacy custom names.
+
 The todo walkthrough uses the default crew; the web preset is optional.
 
 ## Chat, Crew Chat, and Activity
@@ -80,7 +82,15 @@ Crew Chat shows shared conversations started with `/discuss TOPIC` and directed 
 
 Tab/Shift+Tab cycles teammates and Crew Chat. F2 cycles views; PgUp/PgDn scroll. Switching views keeps work running.
 
-Start a read-only group discussion from any view:
+To meet the current crew, ask every teammate to introduce themselves. Paste this as one command:
+
+```text
+/discuss Everyone in the current crew, introduce yourself. State your name, role, main responsibilities, current file access, and how you collaborate with the other teammates. Explain which tasks I should assign to you and give one short example. Cover every role in the current roster; do not invent absent teammates. Keep introductions concise and do not modify files. Lead: finish with a brief guide to who handles what.
+```
+
+Introductions appear in Crew Chat and use the current roster. Discussions are read-only for everyone, including teammates who can write files during implementation tasks. Use `/roles list` to browse additional specialist roles.
+
+For a planning discussion, try:
 
 ```text
 /discuss How should we improve the navigation?
@@ -137,6 +147,22 @@ The offline previews do not call Codex or access crew state. Optional live integ
 node .\scripts\check-codex.js
 node .\scripts\check-workflow.js
 ```
+
+## Custom teams and command help
+
+Use `/preset create NAME [LEAD REVIEWER]` to capture your current crew, `/preset title NAME TEXT` to name it, and `/preset delete NAME` to remove only its saved definition. Customize members with `/crew add`, `/crew rename`, and `/crew role`. `/preset improve MEMBER [GOALS]` asks Codex for read-only suggestions about skills and descriptions; review and apply the wording yourself.
+
+Every command category in `/help` includes usage examples. Search with `/help model` for all-crew and individual model settings. See the [command reference](docs/COMMANDS.md) for a complete custom-team walkthrough and recovery behavior.
+
+See [security boundaries](SECURITY.md) before running agents on a project. Preset deletion never removes project files. Writer tasks can edit or delete project files within their permissions; keep version control and backups.
+
+For publication checks and the latest local findings, see the [release security audit](docs/RELEASE_SECURITY_AUDIT.md) and [public release checklist](SECURITY.md#public-release-checks).
+
+Simple greetings and acknowledgements use brief conversational replies. Clarification questions and your answers appear as readable messages; internal continuation instructions stay out of the conversation view. Use `/queue show TASK_ID` when you need the original task prompt or result.
+
+## Optional context optimization
+
+Use `/context on` to shorten long assistant replies included in handoffs, Crew Chat, and recovered conversations. `/context status` shows character counts before and after; `/context off` restores the previous behavior. The setting is saved per project and defaults to off. User messages, current requirements and full saved records are preserved. This is lossy local clipping, not control over Codex's internal session context; see the [command guide](docs/COMMANDS.md#local-context-optimizer) for limits.
 
 ## License
 

@@ -2,15 +2,15 @@ import { HELP } from './commands.js';
 import { ROLES } from './roles.js';
 
 const COMMANDS = ['/help', '/questions', '/questions on', '/questions off', '/questions list', '/answer', '/chat', '/group', '/discuss', '/switch group', '/next', '/prev', '/task', '/send', '/handoff', '/retry', '/stop', '/clear', '/new',
-  '/status', '/model', '/model list', '/model set', '/model reset', '/activity', '/act', '/switch chat', '/switch activity', '/switch prev', '/folder', '/close', '/quit', '/exit', '/archives', '/undo', '/diff', '/changes', '/doctor', '/progress',
+  '/context', '/context on', '/context off', '/context status', '/status', '/model', '/model list', '/model set', '/model reset', '/activity', '/act', '/switch chat', '/switch activity', '/switch prev', '/folder', '/close', '/quit', '/exit', '/archives', '/undo', '/diff', '/changes', '/doctor', '/progress',
   '/crew list', '/crew add', '/crew remove', '/crew rename', '/crew role', '/crew access', '/crew info', '/crew chat',
   '/archives restore', '/queue list', '/queue pause', '/queue resume', '/queue cancel', '/queue move', '/queue retry', '/queue show',
-  '/workflow list', '/workflow show', '/workflow cancel', '/workflow retry', '/preset list', '/preset show', '/preset apply', '/preset save', '/preset restore', '/roles list', '/roles show'];
+  '/workflow list', '/workflow show', '/workflow cancel', '/workflow retry', '/preset list', '/preset show', '/preset apply', '/preset save', '/preset create', '/preset title', '/preset improve', '/preset delete', '/preset restore', '/roles list', '/roles show'];
 export function completions(input, names, presetNames = ['default', 'web', 'mobile', 'social', 'content']) {
   if (input.startsWith('@')) return names.filter(n => n.startsWith(input.slice(1))).map(n => `@${n}`);
   const role = input.match(/^(\/roles show|\/crew (?:add|role) [a-z][a-z0-9-]* --role)\s+(\S*)$/);
   if (role) return Object.keys(ROLES).filter(n => n.startsWith(role[2])).map(n => `${role[1]} ${n}`);
-  const preset = input.match(/^(\/preset (?:show|apply))\s+(\S*)$/);
+  const preset = input.match(/^(\/preset (?:show|apply|title|delete))\s+(\S*)$/);
   if (preset) return presetNames.filter(n => n.startsWith(preset[2])).map(n => `${preset[1]} ${n}`);
   if (!input.startsWith('/')) return [];
   const modelTarget = input.match(/^(\/model (?:set|reset))\s+(\S*)$/);

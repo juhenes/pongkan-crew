@@ -39,10 +39,27 @@ export class Presets {
     this.crew.member(leadName);
     if (this.crew.member(reviewerName).writable || leadName === reviewerName) throw new Error('Choose a separate read-only reviewer.');
     if (this.crew.state.members.length > MAX_TEAM) throw new Error(`Presets support up to ${MAX_TEAM} teammates.`);
-    const preset = { name, title: name, lead: leadName, reviewer: reviewerName,
+    const preset = { name, title: this.crew.state.presets.find(p => p.name === name)?.title || name, lead: leadName, reviewer: reviewerName,
       members: this.crew.state.members.map(({ name, role, writable }) => ({ name, role, writable })) };
     this.crew.state.presets = this.crew.state.presets.filter(p => p.name !== name);
     this.crew.state.presets.push(preset); this.crew.save();
+  }
+  custom(name) {
+    if (Object.hasOwn(BUILTIN_PRESETS, name)) throw new Error('Cannot edit or delete a built-in preset.');
+    const saved = this.crew.state.presets.find(p => p.name === name);
+    if (!saved) throw new Error('Unknown custom preset. Use /preset list.');
+    return saved;
+  }
+  title(name, text) {
+    const saved = this.custom(name);
+    if (!text?.trim() || text.length > 200 || /[\x00-\x1f\x7f]/.test(text)) throw new Error('Use a title of 1-200 characters without control characters.');
+    saved.title = text.trim(); this.crew.save();
+  }
+  delete(name) {
+    this.custom(name);
+    this.crew.state.presets = this.crew.state.presets.filter(p => p.name !== name);
+    if (this.crew.state.activePreset === name) this.crew.state.activePreset = null;
+    this.crew.save();
   }
   apply(name) {
     const preset = this.get(name); this.idle();
@@ -62,6 +79,7 @@ export class Presets {
     this.crew.state.members = structuredClone(snapshot.members);
     for (const m of this.crew.state.members) m.status = 'ready';
     this.crew.state.coordination = snapshot.coordination || null;
+    this.crew.normalizeDefaultCoordination();
     this.crew.state.activePreset = snapshot.activePreset || null;
     this.crew.save(); this.crew.notify(`Restored crew archive ${id}`);
   }

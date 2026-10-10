@@ -44,7 +44,11 @@ test('busy members cannot be removed or reconfigured and last member cannot be r
     assert.throws(() => execute(app, line), /Stop/);
   }
   app.crew.running.clear();
-  for (const name of ['researcher', 'developer', 'reviewer']) execute(app, `/crew remove ${name}`);
+  for (const name of ['researcher', 'developer']) execute(app, `/crew remove ${name}`);
+  assert.throws(() => execute(app, '/crew remove reviewer'), /designated/);
+  // Legacy single-member rosters must still keep their last teammate.
+  app.crew.state.members = [app.crew.member('chief')];
+  app.crew.state.coordination = null;
   assert.throws(() => execute(app, '/crew remove chief'), /last/);
 });
 test('clear keeps session while new resets it; retry resends last user message', t => {

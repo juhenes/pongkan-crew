@@ -26,3 +26,13 @@ These checks run offline. Optional [live checks](README.md#development-checks) r
 - Report check results and anything not checked.
 - Update usage docs when behavior changes.
 - Exclude generated output, local state, installed dependencies, and secrets.
+
+## Security-sensitive changes
+
+Read [SECURITY.md](SECURITY.md) before changing filesystem operations, process arguments or permissions. Preserve shell-free subprocess invocation, read-only task retries, private state handling, built-in preset protection and recoverable history. Add regression tests for path redirection and permission regressions using temporary fixtures; never use real system files or credentials. Update [command documentation](docs/COMMANDS.md) and in-app examples when changing commands.
+
+Coordinator and state-migration changes must cover fresh default crews, older saved state, renamed coordinators, restart, preset restore and undo. Reject malformed destructive commands before mutating archives or saving state. Document migration and recovery steps in [UPGRADING.md](docs/UPGRADING.md). Keep migration fixtures synthetic and never commit a real `.pongkan-crew/state.json`.
+
+## Preparing a public release
+
+Follow the [public release checks](SECURITY.md#public-release-checks) and review the [release security audit](docs/RELEASE_SECURITY_AUDIT.md). Ignored files can still exist in old commits. Never run a contributor's scripts on a machine containing production credentials; review executable changes first and use a clean environment. Keep optional live Codex checks separate from offline CI.

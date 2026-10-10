@@ -20,6 +20,21 @@ export function modelLabel(member) {
   return `${member.model || 'Codex default (inherited)'} | effort: ${member.reasoningEffort || 'Codex default (inherited)'}`;
 }
 
+export function modelCatalogLines(catalog, target) {
+  return ['From the installed Codex model cache; availability may have changed.',
+    'Enter one example command at a time. Changes affect future tasks.',
+    `One teammate = ${target} (currently selected); all = your current crew.`, '',
+    ...(catalog.length ? catalog.flatMap(choice => {
+      const effort = choice.efforts.includes('medium') ? 'medium' : choice.efforts[0];
+      const selection = choice.id + (effort ? ` ${effort}` : '');
+      return [choice.id, ...(choice.name !== choice.id ? [`  ${choice.name}`] : []),
+        `  Efforts: ${choice.efforts.join(', ') || 'Codex default'}`,
+        `  All teammates: /model set all ${selection}`,
+        `  One teammate: /model set ${target} ${selection}`, ''];
+    }) : ['No readable model cache. Open the Codex CLI to refresh it, or enter a provider model ID.', '']),
+    'RESET TO CODEX DEFAULTS', `/model reset ${target}`, '/model reset all'];
+}
+
 export function validateModelChoice(model, effort, catalog = readModelCatalog()) {
   if (typeof model !== 'string' || !MODEL_ID.test(model)) throw new Error('Enter a valid model ID from /model list or your provider.');
   if (effort !== undefined && !EFFORTS.has(effort)) throw new Error('Invalid reasoning effort. Use /model list to check supported efforts.');

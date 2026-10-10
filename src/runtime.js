@@ -1,4 +1,5 @@
-import { mkdirSync, openSync, closeSync, writeFileSync, readFileSync, unlinkSync, realpathSync, existsSync } from 'node:fs';
+import { stateDirectory, assertPrivateFile } from './storage.js';
+import { openSync, closeSync, writeFileSync, readFileSync, unlinkSync, existsSync } from 'node:fs';
 import { join, delimiter } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -41,6 +42,7 @@ function ownerHasExited(owner) {
 }
 
 function claimLock(file) {
+  assertPrivateFile(file);
   try { return openSync(file, 'wx'); }
   catch (error) {
     if (error.code !== 'EEXIST') throw new Error(`Cannot write folder state: ${error.message}`);
@@ -60,6 +62,7 @@ function claimLock(file) {
   try {
     const current = readLockOwner(file);
     if (!ownerHasExited(current)) throw occupied(current);
+    assertPrivateFile(file);
     unlinkSync(file);
     try { return openSync(file, 'wx'); }
     catch (error) {
@@ -73,8 +76,7 @@ function claimLock(file) {
 }
 
 export function acquireLock(folder) {
-  const directory = join(realpathSync(folder), '.pongkan-crew');
-  mkdirSync(directory, { recursive: true });
+  const directory = stateDirectory(folder);
   const file = join(directory, 'app.lock');
   const token = randomUUID();
   const fd = claimLock(file);
@@ -85,7 +87,7 @@ export function acquireLock(folder) {
   return () => {
     if (released) return;
     released = true;
-    try { if (JSON.parse(readFileSync(file, 'utf8')).token === token) unlinkSync(file); }
+    try { stateDirectory(folder); assertPrivateFile(file); if (JSON.parse(readFileSync(file, 'utf8')).token === token) unlinkSync(file); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   };
 }

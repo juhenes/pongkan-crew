@@ -24,6 +24,16 @@ Plain text goes to the selected teammate in Chat or starts a read-only discussio
 
 For ordered implementation and review, use `/task`; direct tasks are independent. Discussions and mentions are read-only. Workflow results stay in individual chats and Activity. Handoffs and retries can trigger edits; inspect changes first.
 
+### Sample: meet your crew
+
+Paste this as one command to introduce the current roster in Crew Chat:
+
+```text
+/discuss Everyone in the current crew, introduce yourself. State your name, role, main responsibilities, current file access, and how you collaborate with the other teammates. Explain which tasks I should assign to you and give one short example. Cover every role in the current roster; do not invent absent teammates. Keep introductions concise and do not modify files. Lead: finish with a brief guide to who handles what.
+```
+
+This works with default and custom crews. Introductions are read-only; the lead summarizes who handles what. If the queue is paused, use `/queue resume` to start the replies.
+
 ## Questions and autonomy
 
 | Command | Purpose | Sample usage |
@@ -103,10 +113,18 @@ Views keep work running. Diffs are bounded and read-only; snapshots work without
 | `/crew role NAME --role ROLE` | Apply catalog instructions and default access | `/crew role designer --role ui-ux-designer` |
 | `/crew access NAME read` | Set future tasks to read-only access | `/crew access designer read` |
 | `/crew access NAME write` | Allow future implementation tasks to write in the project | `/crew access designer write` |
-| `/crew rename NAME NEWNAME` | Rename a teammate and update coordination names if needed | `/crew rename designer artist` |
-| `/crew remove NAME` | Archive and remove a teammate's conversation and role | `/crew remove artist` |
+| `/crew rename NAME NEWNAME` | Rename a teammate; preserve lead/reviewer routing across restarts | `/crew rename chief boss` |
+| `/crew remove NAME` | Archive and remove a non-coordinator; reject extra arguments | `/crew remove artist` |
 
 Finish/cancel active workflows and affected tasks before changing members. The reviewer stays read-only; coordination members and the last teammate cannot be removed. Writer access does not grant command approvals, and discussions remain read-only.
+
+These protections apply to the default crew as well as applied presets. Renaming `chief` to `boss` keeps `/task` routed to Boss; renaming `reviewer` keeps that teammate designated as the read-only reviewer. Applying a different preset selects its coordinators. `/crew remove artist extra` is invalid and leaves teammates, archives and saved state unchanged. See [upgrading](UPGRADING.md) for older saved crews.
+
+Sidebar names, chat speaker labels and the selected teammate heading capitalize only the first letter (for example, `Chief`, `Developer`, `You` and `System`). Crew Chat speaker names follow the same format. Commands, mentions and saved teammate names continue to use lowercase names such as `/chat chief` and `@developer`.
+
+Crew prompts also request capitalized teammate names in prose, introductions and handoffs. Exact lowercase IDs remain required in commands, mentions and workflow JSON. This affects future generated replies; existing replies and quoted text are preserved.
+
+In Chat and Crew Chat, messages start directly below the speaker's name; blank lines separate messages.
 
 ## Presets
 
@@ -116,9 +134,35 @@ Finish/cancel active workflows and affected tasks before changing members. The r
 | `/preset show NAME` | Preview members, instructions, access, and coordination | `/preset show web` |
 | `/preset apply NAME` | Archive current crew and create fresh preset sessions | `/preset apply default` |
 | `/preset save NAME [LEAD REVIEWER]` | Save current roles/access as a custom preset | `/preset save my-team chief reviewer` |
+| `/preset create NAME [LEAD REVIEWER]` | Capture the current roster as a new custom preset; reject existing names | `/preset create studio chief reviewer` |
+| `/preset title NAME TEXT` | Set a custom preset display title (up to 200 characters) | `/preset title studio Accessible design studio` |
+| `/preset improve MEMBER [GOALS]` | Queue read-only Codex suggestions for role skills and responsibilities; apply suggestions manually | `/preset improve developer Focus on accessible interfaces and testing` |
+| `/preset delete NAME` | Delete only a custom preset definition; preserve teammates, conversations, archives and files | `/preset delete studio` |
 | `/preset restore ARCHIVE_ID` | Restore an archived complete crew | `/preset restore ARCHIVE_ID` |
 
 Built-ins: `default`, `web`, `mobile`, `social`, `content`. Finish/cancel outstanding work before applying or restoring. Applying preserves files and task history but starts fresh conversations; `/undo` restores the prior crew. Saving does not replace the crew or overwrite built-ins.
+
+### Build and refine your own team
+
+Start with a built-in team, customize names and instructions, then capture the roster. Enter each line separately:
+
+```text
+/preset apply default
+/crew add designer Review accessibility, keyboard navigation, and UI consistency. Deliver actionable findings and verification steps.
+/preset improve designer Focus on accessible web interfaces
+```
+
+Read the suggestions in the designer chat. Apply the wording you accept with `/crew role designer YOUR_ACCEPTED_INSTRUCTIONS`. Role text describes skills; it does not install Codex skills or execute code. New custom teammates are read-only; grant write access only when needed using `/crew access designer write`.
+
+```text
+/preset create studio chief reviewer
+/preset title studio Accessible design studio
+/preset show studio
+```
+
+To change the saved team, customize the current crew and run `/preset save studio chief reviewer` again. This preserves its display title. Presets capture names, role instructions and access, not transcripts, sessions or model overrides. The lead and reviewer must exist and be different; the reviewer must be read-only. Names use lowercase letters, digits and hyphens, start with a letter, and contain at most 32 characters.
+
+`/preset delete studio` removes its saved definition immediately. It cannot delete built-ins and does not delete the active crew or project files. Deleting an active definition clears its preset label; its crew remains customized. There is no preset-definition undo; save the current roster again if needed. Applying or restoring a preset archives the current crew and starts or restores sessions, respectively.
 
 ## Conversations and recovery
 
@@ -137,11 +181,25 @@ Recovery restores conversations/settings, not project files. Stop/cancel relevan
 | Command | Purpose | Sample usage |
 | --- | --- | --- |
 | `/model [NAME]` | Inspect selected/named teammate's requested model and live status | `/model developer` |
-| `/model list` | Browse the locally cached model catalog and supported effort levels | `/model list` |
+| `/model list` | Browse spaced model entries, supported efforts, and copyable commands for all teammates or the selected teammate | `/model list` |
 | `/model set NAME MODEL_ID [EFFORT]` | Choose model and optional effort for future tasks | `/model set developer MODEL_ID medium` |
 | `/model set all MODEL_ID [EFFORT]` | Set model for all teammates | `/model set all MODEL_ID` |
 | `/model reset [NAME]` | Remove overrides for selected/named teammate | `/model reset developer` |
 | `/model reset all` | Restore inherited Codex defaults for everyone | `/model reset all` |
+
+The model panel shows a blank line between choices and actual commands for each cached model, using your selected teammate's name. Examples use a supported effort (medium when available), or omit effort when none is listed. It also shows commands to reset one teammate or everyone.
+
+For example, if your catalog lists `gpt-5.4` with medium/high effort:
+
+```text
+/model set all gpt-5.4 medium
+/model set developer gpt-5.4 high
+/model developer
+/model reset developer
+/model reset all
+```
+
+`all` means every teammate in the current roster, not every saved preset. With the web preset, use a specific name such as `/model set frontend-dev gpt-5.4 high`. Omit effort to inherit Codex's effort default. Stop affected work and finish/cancel workflows before changing settings. Model IDs here are illustrative; no account availability is promised.
 
 Choose IDs and effort levels from `/model list`; cached entries may be unavailable to your account. Changes affect future tasks, preserving conversations and permissions.
 
@@ -183,3 +241,27 @@ Run these in PowerShell or Command Prompt, **outside the crew input**.
 | `node .\src\cli.js --help` | Print CLI usage and command help; `-h` is an alias |
 
 The target defaults to the current directory; quote paths with spaces and confirm with `/folder`. Only one instance can target a folder. Run npm/npx in a terminal, not crew input. For a complete example, see the [todo walkthrough](TODO_WEBSITE_WALKTHROUGH.md).
+
+## Conversation presentation
+
+Chat shows clarification signals as readable `Question:` or `Blocked:` text. When you answer with `/answer TASK_ID TEXT`, the conversation shows `Answer: TEXT` instead of replaying the original assignment and internal continuation instructions. This also applies to recognized older saved conversations and workflow continuations. Original prompts and results remain available through `/queue show TASK_ID`; display formatting does not rewrite saved history.
+
+Standalone greetings and acknowledgements such as `Hello!`, `Thanks`, and `Okay` receive instructions for a brief natural reply, without tools or a formal completion report. They run read-only and cannot become waiting clarification tasks. A message such as `Hello, build a navigation bar` remains a normal assignment, with its usual permissions and clarification behavior. Explicit workflows and resumed assignments keep task handling. Reply wording still comes from Codex; the app does not replace replies with canned greetings.
+
+## Local context optimizer
+
+Context optimization is optional and **off by default**. Enter each command separately:
+
+```text
+/context on
+/context status
+/context off
+```
+
+The mode is saved per project and applies when future prompts are built. It locally shortens long assistant replies in workflow handoffs, Crew Chat context, and recovered conversations without an existing Codex session. Each shortened reply retains its beginning, ending, source label, and an explicit omission marker. Every source remains represented. Full original records stay in saved history; `/queue show TASK_ID` displays full task results.
+
+The optimizer keeps current assignments, clarification answers, user messages, captured changed-file lists, roles, permission instructions and discussion restrictions intact. It targets 24,000 characters per context section, allocating at most 4,000 characters per assistant reply. User text and source labels take priority, so this is a soft target rather than a hard context limit. Large user histories can exceed it.
+
+`/context status` reports before/after character counts and shortened replies for the latest optimized section of each type. These compare the same labeled records before and after shortening, not total prompt size, provider token usage, cost savings or model context-window utilization. Existing counts remain visible when the mode is off.
+
+This is deterministic clipping, not AI summarization or Codex session compaction. Middle text can contain essential evidence; inspect originals when needed, and disable the optimizer for tasks requiring every detail. It makes no extra API calls, resets no sessions, deletes no history and changes no permissions. Codex still manages the context inside resumed sessions; the app cannot inspect or compact that internal history. With the mode off, the app retains its previous bounded context behavior.

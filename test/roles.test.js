@@ -80,6 +80,6 @@ test('role completion and expanded sidebar keep specialist selection and view co
   const crew = setup(t);
   crew.presets.apply('web');
   const output = screen(crew, 'qa-reviewer', '', '', 120, 40);
-  assert.match(output, /> qa-reviewer/);
+  assert.match(output, /> Qa-reviewer/);
   assert.match(output, /F2: switch view/);
 });

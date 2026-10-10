@@ -1,9 +1,13 @@
+import { commandExamples } from './command-examples.js';
 import { ROLES, roleMember } from './roles.js';
 import { presetListRows } from './preset-display.js';
 import { directMessages } from './conversations.js';
 import { spacedRoleText } from './role-display.js';
-import { readModelCatalog, modelLabel, validateModelChoice } from './models.js';
+import { readModelCatalog, modelLabel, validateModelChoice, modelCatalogLines } from './models.js';
 export const HELP = [
+  'Enter one command at a time. UPPERCASE = replace with a value; [VALUE] = optional.',
+  'Names below use the default crew; /crew list shows your actual names.',
+  'Model IDs are examples; use /model list to check your installed catalog.', 'You can search descriptions and examples with /help QUERY.', '',
   'HELP — COMMANDS AND CONTROLS',
   'PgUp/PgDn or Up/Down: scroll help | Esc: return to previous view', '',
   'CREW',
@@ -15,13 +19,17 @@ export const HELP = [
   '/preset show NAME             Preview roles and permissions',
   '/preset apply NAME            Archive current crew and apply preset',
   '/preset save NAME [LEAD REVIEWER] Save current roles as a custom preset',
+  '/preset create NAME [LEAD REVIEWER] Save new team; reject existing names',
+  '/preset title NAME TEXT        Set saved team display title',
+  '/preset improve MEMBER [GOALS] Ask Codex for read-only role suggestions',
+  '/preset delete NAME            Delete custom definition; keep crew/files',
   '/preset restore ARCHIVE_ID    Restore a complete archived crew',
   '/crew list                     List teammates and permissions',
   '/crew add NAME [ROLE]          Add a read-only teammate',
-  '/crew remove NAME             Remove teammate and local history',
-  '/crew rename NAME NEWNAME     Rename a teammate',
+  '/crew remove NAME             Archive/remove non-coordinator; exact arguments required',
+  '/crew rename NAME NEWNAME     Rename teammate; keep lead/reviewer routing',
   '/crew role NAME ROLE          Change instructions for future turns',
-  '/crew access NAME read|write  Set workspace permissions',
+  '/crew access NAME read|write  Set permissions; reviewer stays read-only',
   '/crew info [NAME]             Show role, permissions and session', '',
   'CHAT AND TASKS',
   '/discuss TOPIC                Two read-only crew rounds and lead summary',
@@ -51,6 +59,7 @@ export const HELP = [
   '/clear                        Clear local transcript; keep Codex session',
   '/new                          Clear transcript and start fresh session',
   '/status                       Show the whole crew\'s current status',
+  '/context [on|off|status]       Control local context clipping; inspect character counts',
   '/model [NAME]                 Show model settings and live status',
   '/model list                   Browse locally cached Codex models',
   '/model set NAME|all MODEL [EFFORT] Choose model for future tasks',
@@ -76,7 +85,7 @@ export const HELP = [
   'Tab on /command               Complete command or teammate name',
   'Tab / Shift+Tab otherwise     Cycle teammates and Crew Chat',
   'Up / Down                     Move in wrapped input; otherwise scroll',
-  'Mouse wheel                   Scroll history or panel',
+  'Mouse wheel                   Disabled; use PgUp/PgDn',
   'PgUp / PgDn                   Scroll history or panel',
   'Left / Right, Home / End      Move input cursor',
   'Backspace / Delete            Delete text at cursor',
@@ -94,7 +103,7 @@ export const HELP = [
   'Interrupted workflows require explicit /workflow retry ID.',
   'The lead validates at most twelve sequential assignments, then review and summary.',
   'Completed workflow means execution finished; inspect review for defects.',
-];
+].flatMap(commandExamples);
 
 function idle(crew, name) {
   const member = crew.member(name);
@@ -195,12 +204,21 @@ export function execute(app, line) {
         'Applying archives the current crew and starts fresh conversations. /undo restores the previous crew.']);
     } else if (action === 'apply' && name && !lead) {
       crew.presets.apply(name); chat(crew.leadName); app.notice = `Applied ${name}. Previous crew archived; /undo to restore.`;
-    } else if (action === 'save' && name && !extra.length && (!lead || reviewer)) {
+    } else if (action === 'title' && name) {
+      crew.presets.title(name, parts.slice(2).join(' ')); app.notice = `Updated title for ${name}.`;
+    } else if (action === 'delete' && name && !lead) {
+      crew.presets.delete(name); app.notice = `Deleted saved preset ${name}. Current crew and project files are preserved.`;
+    } else if (action === 'improve' && name) {
+      const member = crew.member(name);
+      const task = crew.queue.enqueue(name, `Suggest improved role instructions for ${name}. Include skills, responsibilities, deliverables, checks, boundaries and handoffs. Suggest a descriptive team title if useful. Return suggested text and /crew role commands for the user to review and apply manually. Do not edit files or settings. Current instructions: ${member.role}\nUser goals: ${parts.slice(2).join(' ') || 'Improve clarity and specificity.'}`, { readOnly: true });
+      chat(name); app.notice = `Read-only description suggestions queued as ${task.id}; review the reply before applying.`;
+    } else if (['save', 'create'].includes(action) && name && !extra.length && (!lead || reviewer)) {
+      if (action === 'create' && Object.hasOwn(crew.presets.list(), name)) throw new Error('Preset already exists. Use /preset save to update a custom preset.');
       crew.presets.save(name, lead, reviewer); app.notice = `Saved preset ${name} for this folder.`;
     } else if (action === 'restore' && name && !lead) {
       crew.presets.restore(name); chat(crew.state.members.some(m => m.name === crew.leadName) ? crew.leadName : crew.state.members[0].name);
       app.notice = 'Archived crew restored.';
-    } else throw new Error('Use /preset list|show NAME|apply NAME|save NAME [LEAD REVIEWER]|restore ARCHIVE_ID.');
+    } else throw new Error('Use /preset list|show NAME|apply NAME|create NAME [LEAD REVIEWER]|save NAME [LEAD REVIEWER]|title NAME TEXT|improve MEMBER [GOALS]|delete NAME|restore ARCHIVE_ID.');
   }
   else if (command === '/crew') {
     const [action, name, ...rest] = parts;
@@ -219,10 +237,11 @@ export function execute(app, line) {
       crew.add(name || '', specialist?.role || rest.join(' ') || 'Assist with the project.', specialist?.writable || false);
       crew.notify(`Added ${name}`); app.notice = `Added ${name} (${specialist?.writable ? 'write' : 'read-only'}).`;
     } else if (['remove', 'rename', 'role', 'access'].includes(action)) {
+      if (action === 'remove' && (!name || rest.length)) throw new Error('Use /crew remove NAME. Extra arguments are not accepted.');
       const member = idle(crew, name);
       if (action === 'remove') {
-        if (crew.state.coordination && Object.values(crew.state.coordination).includes(name)) throw new Error('Cannot remove the designated lead or reviewer. Apply another preset first.');
         if (crew.state.members.length === 1) throw new Error('Cannot remove the last teammate.');
+        if ([crew.leadName, crew.reviewerName].includes(name)) throw new Error('Cannot remove the designated lead or reviewer. Apply another preset first.');
         crew.archive(`remove ${name}`);
         crew.state.members = crew.state.members.filter(m => m !== member);
         if (app.selected === name) app.selected = crew.state.members[0].name;
@@ -238,13 +257,13 @@ export function execute(app, line) {
         if (rest[0] === '--role') {
           if (rest.length !== 2) throw new Error('Use /crew role NAME --role ROLE.');
           const specialist = roleMember(rest[1], name);
-          if (crew.state.coordination?.reviewer === name && specialist.writable) throw new Error('The designated reviewer must remain read-only.');
+          if (crew.reviewerName === name && specialist.writable) throw new Error('The designated reviewer must remain read-only.');
           member.role = specialist.role; member.writable = specialist.writable;
         } else member.role = requireText(rest.join(' '));
       }
       else {
         if (rest.length !== 1 || !['read', 'write'].includes(rest[0])) throw new Error('Access must be read or write.');
-        if (crew.state.coordination?.reviewer === name && rest[0] === 'write') throw new Error('The designated reviewer must remain read-only.');
+        if (crew.reviewerName === name && rest[0] === 'write') throw new Error('The designated reviewer must remain read-only.');
         member.writable = rest[0] === 'write';
       }
       crew.save(); app.panel = null;
@@ -337,14 +356,29 @@ export function execute(app, line) {
       `Requested model: ${modelLabel(p || m)}`,
       `Events: ${p?.events || 0}`, '', 'CHANGED FILES', ...(p?.files || []), '', 'LATEST SYSTEM MESSAGE', directMessages(m).findLast(msg => msg.role === 'system')?.text || '(none)']; });
   }
+  else if (command === '/context') {
+    if (parts.length > 1 || (text && !['on', 'off', 'status'].includes(text))) throw new Error('Use /context on|off|status.');
+    if (text === 'on' || text === 'off') {
+      crew.state.contextOptimization = text === 'on'; crew.save();
+      app.notice = `Context optimization ${text.toUpperCase()} for future prompts; saved history and active turns are preserved.`;
+    } else panel('CONTEXT OPTIMIZER', () => [
+      `Mode: ${crew.state.contextOptimization ? 'ON' : 'OFF (default)'}`, '',
+      'Opt in: /context on | Disable: /context off',
+      'Locally clips long assistant replies in handoffs, discussions and recovered history.',
+      'Preserves user text, clarification answers, file lists and original saved records.',
+      'Target: 24,000 characters per context section; protected text may exceed it.',
+      'Does not control Codex session history. Character counts are not token usage.', '',
+      ...Object.entries(crew.state.contextStats || {}).map(([kind, stats]) =>
+        `${kind}: ${stats.before} -> ${stats.after} characters; ${stats.clipped} shortened replies`),
+      'Counts show the latest optimized section of each type, not total prompt size.',
+      'Middle text can contain important evidence. Inspect /queue show ID for full task results.',
+    ]);
+  }
   else if (command === '/model') {
     const [action, target, model, effort, ...extra] = parts;
     if (action === 'list' && parts.length === 1) {
       const catalog = readModelCatalog();
-      panel('MODEL CHOICES', ['From the installed Codex model cache; availability may have changed.',
-        'Choose: /model set NAME|all MODEL [EFFORT]', '',
-        ...(catalog.length ? catalog.flatMap(choice => [choice.id, `  ${choice.name} | efforts: ${choice.efforts.join(', ') || 'Codex default'}`]) :
-          ['No readable model cache. Open the Codex CLI to refresh it, or enter a provider model ID.'])]);
+      panel('MODEL CHOICES', modelCatalogLines(catalog, app.selected));
     } else if (action === 'set' || action === 'reset') {
       if (action === 'set') {
         if (!target || !model || extra.length) throw new Error('Use /model set NAME|all MODEL [EFFORT].');

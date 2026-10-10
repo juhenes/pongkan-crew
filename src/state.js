@@ -17,6 +17,8 @@ export function validateState(state) {
   if (!state || state.version !== 1 || !membersValid(state.members)) invalid();
   if (state.questionsEnabled === undefined) state.questionsEnabled = true;
   if (typeof state.questionsEnabled !== 'boolean') invalid();
+  if (state.contextOptimization === undefined) state.contextOptimization = false;
+  if (typeof state.contextOptimization !== 'boolean') invalid();
   for (const field of ['archives', 'tasks', 'workflows', 'discussions', 'presets']) {
     if (state[field] === undefined) state[field] = [];
     if (!Array.isArray(state[field])) invalid();

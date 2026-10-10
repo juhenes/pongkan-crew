@@ -61,7 +61,8 @@ test('direct waiting task survives restart, respects pause, and can be cancelled
   await until(() => task.status === 'waiting');
   await crew.close();
   const restored = new Crew(crew.folder, { runner: async (args, prompt, event) => reply(event, 'Done') });
-  t.after(() => restored.close());
+  // Close the restored instance before setup's hook removes its workspace.
+
   assert.equal(restored.queue.get(task.id).question, 'Layout?');
   restored.queue.pause();
   restored.queue.answer(task.id, 'List');
@@ -71,6 +72,7 @@ test('direct waiting task survives restart, respects pause, and can be cancelled
   const state = structuredClone(restored.state);
   state.questionsEnabled = 'yes';
   assert.throws(() => validateState(state), /Invalid crew state/);
+  await restored.close();
 });
 test('questions off is saved and forbids waiting on optional choices', async t => {
   const crew = setup(t, async (args, prompt, event) => {

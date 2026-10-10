@@ -89,7 +89,7 @@ test('Crew Chat explains a paused queue and identifies the active speaker after 
   assert.match(render(), /Queue paused.*\/queue resume/);
   assert.doesNotMatch(render(), /Discussion in progress/);
   crew.queue.resume();
-  assert.match(render(), /DEVELOPER.*Connecting/);
+  assert.match(render(), /Developer.*Connecting/);
   release();
   await crew.queue.settled(crew.discussions.current.taskIds[0]);
   assert.match(render(), /Here is my opinion/);
