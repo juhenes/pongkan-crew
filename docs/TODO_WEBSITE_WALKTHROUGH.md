@@ -8,11 +8,11 @@ Build a local todo website with **Next.js, shadcn/ui preset `b0`, and browser `l
 
 ## Result video
 
-[Open or download `todo-result.mkv`](../video/todo-result.mkv).
+[Open or download `todo-result.mp4`](../video/todo-result.mp4).
 
 <video controls preload="metadata" width="100%">
-  <source src="../video/todo-result.mkv" type="video/x-matroska">
-  Your Markdown viewer cannot play this video inline. [Open the video file](../video/todo-result.mkv).
+  <source src="../video/todo-result.mp4" type="video/mp4">
+  Your Markdown viewer cannot play this video inline. [Open the video file](../video/todo-result.mp4).
 </video>
 
 Use **Next.js as the overall application framework** and **shadcn/ui preset `b0` for the interface components and design system**. Initialize them with `npx shadcn@latest init --preset b0 --template next` using the folder instructions below.

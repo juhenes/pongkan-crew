@@ -40,6 +40,17 @@ Use `/task GOAL` to let the lead plan assignments, arrange an independent review
 
 For the full command list and examples, see the [command reference](docs/COMMANDS.md).
 
+## Sample approach: local todo website
+
+The walkthrough demonstrates a local-only todo app built with Next.js and shadcn/ui preset `b0`, using browser storage. See the [todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) for setup and the crew prompts.
+
+[Open or download the MP4](video/todo-result.mp4).
+
+<video controls preload="metadata" width="100%">
+  <source src="video/todo-result.mp4" type="video/mp4">
+  Your Markdown viewer cannot play this video inline. [Open the MP4](video/todo-result.mp4).
+</video>
+
 ## Choose a crew
 
 The default crew is Chief, Researcher, Developer, and Reviewer. Built-in presets add specialists for web, mobile, social, or content work. Preview and apply a preset with:
