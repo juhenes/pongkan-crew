@@ -4,6 +4,8 @@
 
 Pongkan Crew runs named Codex teammates from a terminal. Chat with one teammate, ask the lead to coordinate a task, and follow the work in Activity. Each target folder has its own crew, conversations, and task history.
 
+![Pongkan Crew terminal interface](assets/images/pongkan-crew-cli.png)
+
 ## Quick start
 
 You need Node.js 22 or newer, the Codex CLI, and a signed-in Codex account. From the Pongkan Crew repository, run:
@@ -42,9 +44,9 @@ Use `/task GOAL` to let the lead plan assignments, arrange an independent review
 
 The walkthrough demonstrates a local-only todo app built with Next.js and shadcn/ui preset `b0`, using browser storage. See the [todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) for setup and the crew prompts.
 
-![Animated preview of the local todo website](video/todo-result.gif)
+![Animated preview of the local todo website](assets/images/todo-result.gif)
 
-[Open or download the full MP4](video/todo-result.mp4).
+[Open or download the full MP4](assets/video/todo-result.mp4).
 
 ## Choose a crew
 
@@ -115,7 +117,7 @@ node .\src\cli.js --doctor --folder "C:\Projects\My Project"
 
 - If `node` or `codex` is not found, install it and reopen the terminal; use `codex login` to sign in.
 - If the folder is already open, close its other Pongkan Crew instance.
-- If a stale lock is reported, confirm the old process stopped, then delete only the reported `app.lock`. Keep `state.json`.
+- Locks left by stopped processes recover automatically. If another instance is running, close it before reopening the folder.
 - If Codex discovery fails on Windows, set `PONGKAN_CODEX_BIN` to the full path of `codex.exe`.
 - Use PgUp/PgDn to scroll; mouse-wheel scrolling is not supported.
 
