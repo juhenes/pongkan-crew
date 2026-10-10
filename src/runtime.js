@@ -28,24 +28,56 @@ export async function checkRuntime(probe = probeCodex) {
   return { ok: true, lines };
 }
 
+function readLockOwner(file) {
+  try { return JSON.parse(readFileSync(file, 'utf8')); }
+  catch { return null; }
+}
+
+function ownerHasExited(owner) {
+  if (!Number.isInteger(owner?.pid) || owner.pid <= 0) return false;
+  try { process.kill(owner.pid, 0); }
+  catch (error) { return error.code === 'ESRCH'; }
+  return false;
+}
+
+function claimLock(file) {
+  try { return openSync(file, 'wx'); }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw new Error(`Cannot write folder state: ${error.message}`);
+  }
+  const occupied = owner => new Error(`Pongkan Crew is already open in this folder (PID ${owner?.pid || 'unknown'}). Close the other instance first.`);
+  const owner = readLockOwner(file);
+  if (!ownerHasExited(owner)) throw occupied(owner);
+
+  // Only one launcher may reclaim a stale lock at a time.
+  const recoveryFile = `${file}.recovery`;
+  let recoveryFd;
+  try { recoveryFd = openSync(recoveryFile, 'wx'); }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw error;
+    throw new Error(`Folder lock recovery is already in progress. Retry after the other launcher exits. If recovery was interrupted, remove only ${recoveryFile} after closing other instances.`);
+  }
+  try {
+    const current = readLockOwner(file);
+    if (!ownerHasExited(current)) throw occupied(current);
+    unlinkSync(file);
+    try { return openSync(file, 'wx'); }
+    catch (error) {
+      if (error.code === 'EEXIST') throw occupied(readLockOwner(file));
+      throw error;
+    }
+  } finally {
+    closeSync(recoveryFd);
+    unlinkSync(recoveryFile);
+  }
+}
+
 export function acquireLock(folder) {
   const directory = join(realpathSync(folder), '.pongkan-crew');
   mkdirSync(directory, { recursive: true });
   const file = join(directory, 'app.lock');
   const token = randomUUID();
-  let fd;
-  try { fd = openSync(file, 'wx'); }
-  catch (error) {
-    if (error.code !== 'EEXIST') throw new Error(`Cannot write folder state: ${error.message}`);
-    let owner;
-    try { owner = JSON.parse(readFileSync(file, 'utf8')); } catch { /* incomplete lock must remain protected */ }
-    let alive = true;
-    if (Number.isInteger(owner?.pid) && owner.pid > 0) {
-      try { process.kill(owner.pid, 0); } catch (error) { alive = error.code !== 'ESRCH'; }
-    }
-    throw new Error(alive ? `Pongkan Crew is already open in this folder (PID ${owner?.pid || 'unknown'}). Close the other instance first.` :
-      `Stale folder lock (PID ${owner.pid}). After checking the old app has stopped, delete only ${file} and restart. Saved conversations are intact.`);
-  }
+  const fd = claimLock(file);
   try { writeFileSync(fd, JSON.stringify({ pid: process.pid, token, started: new Date().toISOString() })); }
   catch (error) { closeSync(fd); unlinkSync(file); throw error; }
   closeSync(fd);
