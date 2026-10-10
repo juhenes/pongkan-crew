@@ -38,8 +38,6 @@ Use `/task GOAL` to let the lead plan assignments, arrange an independent review
 /task Improve the README, check the instructions, and review the changes.
 ```
 
-For the full command list and examples, see the [command reference](docs/COMMANDS.md).
-
 ## Sample approach: local todo website
 
 The walkthrough demonstrates a local-only todo app built with Next.js and shadcn/ui preset `b0`, using browser storage. See the [todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) for setup and the crew prompts.
@@ -58,13 +56,13 @@ The default crew is Chief, Researcher, Developer, and Reviewer. Built-in presets
 /preset apply web
 ```
 
-Applying a preset archives the current crew and starts fresh conversations; it preserves project files and task history. Finish or cancel active work first. Use `/undo` to restore the previous crew. Use `/roles list` and `/crew add NAME --role ROLE` to add a specialist without replacing your crew. The command reference explains access and preset behavior.
+Applying a preset archives the crew and starts fresh conversations, preserving project files and task history. Finish or cancel active work first; `/undo` restores the previous crew. To add one specialist instead, use `/roles list` and `/crew add NAME --role ROLE`.
 
-**The web preset is optional.** The [todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) uses the default crew, so skip `/preset apply web` for that sample. If you apply `web`, use its `project-lead`, `frontend-dev`, and `qa-reviewer` names where the walkthrough shows `chief`, `developer`, and `reviewer`.
+The todo walkthrough uses the default crew; the web preset is optional.
 
 ## Chat, Crew Chat, and Activity
 
-Chat is a direct conversation with one teammate. Crew Chat is for shared read-only discussions. Activity follows work across the team. Switch views with F2; use Tab to cycle teammates and Crew Chat. PgUp/PgDn scroll while work continues.
+Chat holds individual conversations, Crew Chat holds shared discussions, and Activity follows the team's work.
 
 ### Task workflows and Crew Chat are separate
 
@@ -78,7 +76,7 @@ Crew Chat shows shared conversations started with `/discuss TOPIC` and directed 
 | Read-only discussion with the crew | `/discuss TOPIC` | Crew Chat |
 | One read-only reply using shared discussion context | `@NAME MESSAGE` | Crew Chat |
 
-Tab cycles through individual teammates and Crew Chat; Shift+Tab reverses that cycle. F2 cycles the Chat, Crew Chat, and Activity views. Switching views does not copy messages between them or stop running work.
+Tab/Shift+Tab cycles teammates and Crew Chat. F2 cycles views; PgUp/PgDn scroll. Switching views keeps work running.
 
 Start a read-only group discussion from any view:
 
@@ -86,7 +84,7 @@ Start a read-only group discussion from any view:
 /discuss How should we improve the navigation?
 ```
 
-Each teammate speaks in turn for two rounds, seeing earlier replies. The current lead then summarizes agreements, disagreements, and next steps. Discussions support up to twelve teammates. Discussion and mention replies appear in **Crew Chat** with separate Codex sessions. They do not add messages or change the session in an individual chat. Teammates cannot trigger extra turns through mentions in their replies.
+Teammates discuss for two rounds, then the lead summarizes. Discussions support up to twelve members and use separate sessions from individual chats.
 
 ## Everyday controls
 
@@ -99,13 +97,13 @@ Each teammate speaks in turn for two rounds, seeing earlier replies. The current
 | Ask or answer a clarification | `/questions list`, `/answer TASK_ID TEXT` |
 | Check Codex and folder access | `/doctor` |
 
-Stopping work does not undo edits already made; inspect `/diff` before retrying. See the [command reference](docs/COMMANDS.md) for recovery, permissions, models, keyboard shortcuts, and every command.
+Stopping does not undo edits; inspect `/diff` before retrying. The [command reference](docs/COMMANDS.md) covers recovery, permissions, models, and shortcuts.
 
 ## Saved data and access
 
-Crew state lives in `<target-folder>/.pongkan-crew/state.json` and includes conversations, task results, archives, and Codex session IDs. Keep it private and add `.pongkan-crew/` to the **target project's** `.gitignore`; the `.gitignore` in this repository cannot ignore state created in a different target folder. Pongkan Crew uses your existing Codex login and does not store credentials.
+Conversations, task results, archives, and session IDs live in `<target-folder>/.pongkan-crew/state.json`. Keep it private and add `.pongkan-crew/` to the **target project's** `.gitignore`. Pongkan Crew uses your Codex login without storing credentials.
 
-Writers receive workspace-write access to the selected folder. Readers, reviewers, planning, and Crew Chat discussions use read-only access. Codex approval and sandbox settings still control command execution; role instructions do not grant operating-system permissions.
+Writers use workspace-write access; readers, reviewers, planning, and discussions use read-only access. Codex sandbox and approval settings control command execution.
 
 ## Troubleshooting
 
@@ -138,8 +136,6 @@ node .\scripts\check-codex.js
 node .\scripts\check-workflow.js
 ```
 
-See the [command reference](docs/COMMANDS.md) for CLI commands and detailed behavior.
-
 ## License
 
-Pongkan Crew is released under the [MIT License](LICENSE). Confirm you have the rights to publish all included work before distributing it.
+Released under the [MIT License](LICENSE).
