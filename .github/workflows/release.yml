@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build release assets and publish
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: 22
+
+      - name: Run test suite
+        run: npm test
+
+      - name: Create release archive and checksum
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ARCHIVE="pongkan-crew-${GITHUB_REF_NAME}.tar.gz"
+          git archive --format=tar.gz --prefix="pongkan-crew-${GITHUB_REF_NAME}/" -o "${ARCHIVE}" HEAD
+          sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "Pongkan Crew ${GITHUB_REF_NAME}" \
+            --generate-notes \
+            pongkan-crew-*.tar.gz*

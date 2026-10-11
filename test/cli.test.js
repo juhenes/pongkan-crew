@@ -18,3 +18,9 @@ test('CLI preview initializes and renders without calling Codex', t => {
   assert.match(output, /Preview/);
   assert.match(output, /CHIEF/i);
 });
+
+test('offline syntax check verifies repository JavaScript files', () => {
+  const script = fileURLToPath(new URL('../scripts/check-syntax.js', import.meta.url));
+  const output = execFileSync(process.execPath, [script], { encoding: 'utf8', timeout: 15000 });
+  assert.match(output, /Syntax check passed: \d+ JavaScript files verified/);
+});

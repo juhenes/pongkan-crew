@@ -1,5 +1,7 @@
 # Pongkan Crew
 
+[![CI](https://github.com/juhenes/pongkan-crew/actions/workflows/ci.yml/badge.svg)](https://github.com/juhenes/pongkan-crew/actions/workflows/ci.yml)
+
 A terminal workspace for named Codex teammates. Chat, plan tasks, review changes, and follow your crew's work in one place.
 
 ![Pongkan Crew terminal interface](assets/images/pongkan-crew-cli.png)
@@ -110,7 +112,7 @@ If Node or Codex is missing, install it and reopen the terminal. Run `codex logi
 
 [Command reference](docs/COMMANDS.md) / [Upgrading and recovery](docs/UPGRADING.md) / [Contributing](CONTRIBUTING.md) / [Security](SECURITY.md)
 
-Run `node --test` for tests and `node .\scripts\preview-display.js` for an offline preview.
+Run `node --test` for tests, `node .\scripts\preview-display.js` for an offline preview, and `node .\scripts\check-syntax.js` for syntax validation. Continuous integration runs offline tests and syntax checks across Linux, macOS, and Windows runners on Node 22 and 24.
 
 ## License
 

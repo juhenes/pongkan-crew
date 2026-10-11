@@ -54,3 +54,16 @@ A subsequent functional review found three pre-existing issues: renaming the def
 Legacy default preset archives receive the same protection on restore and undo. Customized legacy identities are preserved without guessing; [UPGRADING.md](UPGRADING.md) documents an explicit recovery path and the private state-file location. README, command help, contributor guidance and the security policy describe the resulting behavior.
 
 Follow-up verification: all 130 offline tests passed, including six coordinator regression tests. The live read-only workflow completed planning, research, independent review and summary against a temporary fixture, which remained unchanged. All 38 local Markdown links resolve, and the whitespace check passed. The earlier live connection and session-resume checks also passed. These checks do not change the original secret-scan scope, clear the remaining media/privacy considerations, or enable hosted GitHub security settings.
+
+## Follow-up: CI/CD implementation and action hardening
+
+Automated CI/CD workflows and Dependabot configuration were added under `.github/`:
+- `.github/workflows/ci.yml`: Executes multi-platform matrix testing (`ubuntu-latest`, `windows-latest`, `macos-latest` on Node.js 22 and 24), runs JavaScript syntax validation via `node scripts/check-syntax.js`, verifies `npm pack --dry-run`, and tests sensitive path ignore rules.
+- `.github/workflows/release.yml`: Automates release asset generation and GitHub release drafting on version tags (`v*`) using GitHub's built-in CLI (`gh`), avoiding unvetted third-party publishing actions.
+- `.github/dependabot.yml`: Tracks and updates pinned GitHub Actions.
+
+Security posture adheres to the guidelines in [SECURITY.md](../SECURITY.md):
+- CI token permissions are restricted to `contents: read`.
+- External actions are pinned to reviewed 40-character commit hashes (`actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` and `actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a`).
+- Offline CI runs without personal credentials or Codex secrets.
+- Pull-request concurrency cancellation prevents stale redundant runs.
