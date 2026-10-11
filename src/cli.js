@@ -9,24 +9,29 @@ import { acquireLock, checkRuntime } from './runtime.js';
 import { completions } from './controls.js';
 import { layoutInput } from './input.js';
 import { MOUSE_OFF, scrollView } from './scroll.js';
+import { runWorker } from './scheduler.js';
+import { answerShortcut } from './answer-shortcut.js';
 
 
 const args = process.argv.slice(2);
 const help = `Pongkan Crew — folder-specific Codex teammates
-Usage: node src/cli.js [--folder <path>] [--preview|--doctor]
+Usage: node src/cli.js [--folder <path>] [--preview|--doctor|--worker [--once]]
 Requires Node 22+ and a signed-in Codex CLI. Defaults to current folder.
 State: <folder>/.pongkan-crew/state.json. --preview does not call Codex.`;
 
 async function main() {
   if (args.includes('--help') || args.includes('-h')) { console.log(help + '\n\n' + HELP.join('\n')); return; }
-  let folder = process.cwd(), preview = false, doctor = false;
+  let folder = process.cwd(), preview = false, doctor = false, worker = false, once = false;
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--folder' && args[i + 1]) folder = resolve(args[++i]);
     else if (args[i] === '--preview') preview = true;
     else if (args[i] === '--doctor') doctor = true;
+    else if (args[i] === '--worker') worker = true;
+    else if (args[i] === '--once') once = true;
     else throw new Error(`Unknown or incomplete option: ${args[i]}\n${help}`);
   }
-  if (!preview && !doctor && (!process.stdin.isTTY || !process.stdout.isTTY)) throw new Error('Open this app in an interactive terminal, or use --preview.');
+  if (once && !worker || [preview, doctor, worker].filter(Boolean).length > 1) throw new Error('Use one mode: --preview, --doctor, or --worker [--once].');
+  if (!preview && !doctor && !worker && (!process.stdin.isTTY || !process.stdout.isTTY)) throw new Error('Open this app in an interactive terminal, or use --preview.');
   const release = acquireLock(folder);
   process.once('exit', release);
   let crew;
@@ -43,6 +48,15 @@ async function main() {
     console.log([...diagnostics.lines, `Folder: ${crew.folder}`, 'Folder lock and saved state: OK'].join('\n'));
     release();
     if (!diagnostics.ok) process.exitCode = 1;
+    return;
+  }
+  if (worker) {
+    const controller = new AbortController();
+    const stop = () => controller.abort();
+    process.once('SIGINT', stop); process.once('SIGTERM', stop);
+    console.log(`Worker active: ${crew.folder}. Press Ctrl+C to stop.`);
+    try { await runWorker(crew, { once, signal: controller.signal }); }
+    finally { process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop); await crew.close(); release(); }
     return;
   }
   if (crew.queue.paused) app.notice = 'Saved tasks are paused. /queue list to inspect; /queue resume to continue.';
@@ -74,7 +88,7 @@ async function main() {
   const setInput = text => { input = Array.from(text); cursor = input.length; };
   const dispatch = line => {
     const result = execute(app, line);
-    if (result?.then) void result.catch(error => { app.notice = error.message; render(); });
+    if (result?.then) void result.then(() => render()).catch(error => { app.notice = error.message; render(); });
   };
   process.stdout.write(MOUSE_OFF + '\x1b[?1049h');
   process.stdin.setRawMode(true);
@@ -102,7 +116,8 @@ async function main() {
         else scrollView(app, -delta);
       } else if (key.name === 'pageup' || key.name === 'pagedown') {
         scrollView(app, key.name === 'pageup' ? 10 : -10);
-      } else if (key.name === 'left') cursor = Math.max(0, cursor - 1);
+      } else if (key.shift && key.name === 'right') setInput(answerShortcut(app, input.join('')));
+      else if (key.name === 'left') cursor = Math.max(0, cursor - 1);
       else if (key.name === 'right') cursor = Math.min(input.length, cursor + 1);
       else if (key.name === 'home') cursor = 0;
       else if (key.name === 'end') cursor = input.length;
@@ -136,7 +151,10 @@ async function main() {
   crew.on('change', render);
   process.stdout.on('resize', render);
   process.on('SIGTERM', app.quit); process.on('SIGINT', app.quit);
-  ticker = setInterval(() => { if (crew.running.size || app.panel?.getLines) render(); }, 1000);
+  ticker = setInterval(() => {
+    try { crew.scheduler.tick(); } catch (error) { app.notice = error.message; }
+    if (crew.running.size || app.panel?.getLines) render();
+  }, 1000);
   ticker.unref();
   render();
 }

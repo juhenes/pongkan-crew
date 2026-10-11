@@ -4,6 +4,9 @@ const NAME = /^[a-z][a-z0-9-]{0,31}$/;
 const ID = /^[a-f0-9]{8}$/;
 const TASK_STATUS = new Set(['queued', 'running', 'waiting', 'completed', 'failed', 'cancelled', 'interrupted']);
 const FLOW_STATUS = new Set(['planning', 'working', 'reviewing', 'summarizing', 'completed', 'failed', 'cancelled', 'interrupted']);
+const steeringValid = entries => entries === undefined || Array.isArray(entries) && entries.length <= 50 &&
+  entries.every(s => s && ID.test(s.id) && typeof s.text === 'string' && s.text.trim() && s.text.length <= 4000 &&
+    Number.isFinite(s.createdAt) && (s.appliedAt === undefined || Number.isFinite(s.appliedAt)));
 function membersValid(members) {
   return Array.isArray(members) && members.length > 0 && new Set(members.map(m => m?.name)).size === members.length &&
     members.every(m => m && NAME.test(m.name) && typeof m.role === 'string' && typeof m.writable === 'boolean' &&
@@ -19,10 +22,28 @@ export function validateState(state) {
   if (typeof state.questionsEnabled !== 'boolean') invalid();
   if (state.contextOptimization === undefined) state.contextOptimization = false;
   if (typeof state.contextOptimization !== 'boolean') invalid();
-  for (const field of ['archives', 'tasks', 'workflows', 'discussions', 'presets']) {
+  if (state.markdownEnabled === undefined) state.markdownEnabled = false;
+  if (typeof state.markdownEnabled !== 'boolean') invalid();
+  for (const field of ['archives', 'tasks', 'workflows', 'discussions', 'presets', 'conversations', 'schedules']) {
     if (state[field] === undefined) state[field] = [];
     if (!Array.isArray(state[field])) invalid();
   }
+  if (state.activeConversations === undefined) state.activeConversations = {};
+  if (!state.activeConversations || typeof state.activeConversations !== 'object' || Array.isArray(state.activeConversations)) invalid();
+  const chats = new Set(state.conversations.map(c => c?.id));
+  if (chats.size !== state.conversations.length || state.conversations.some(c => !c || !ID.test(c.id) ||
+    typeof c.title !== 'string' || !c.title.trim() || c.title.length > 120 || !Number.isFinite(c.createdAt) ||
+    !['ready', 'working', 'error'].includes(c.status) || !['direct', 'group'].includes(c.kind) || typeof c.archived !== 'boolean' ||
+    (c.kind === 'direct' && !NAME.test(c.member)) || !Array.isArray(c.messages) ||
+    c.messages.some(m => !m || typeof m.text !== 'string' || !['user', 'assistant', 'system'].includes(m.role)) ||
+    !(c.threadId === null || typeof c.threadId === 'string'))) invalid();
+  if (Object.entries(state.activeConversations).some(([name, id]) => !state.conversations.some(c => c.id === id && c.member === name && !c.archived))) invalid();
+  state.activeConversations = Object.assign(Object.create(null), state.activeConversations);
+  if (state.activeGroupConversation && !state.conversations.some(c => c.id === state.activeGroupConversation && c.kind === 'group' && !c.archived)) invalid();
+  if (new Set(state.schedules.map(s => s?.id)).size !== state.schedules.length || state.schedules.some(s => !s || !ID.test(s.id) || !NAME.test(s.member) ||
+    typeof s.text !== 'string' || !s.text.trim() || s.text.length > 8000 || !Number.isInteger(s.minutes) || s.minutes < 1 || s.minutes > 525600 ||
+    typeof s.enabled !== 'boolean' || typeof s.readOnly !== 'boolean' || !Number.isFinite(s.nextRun) ||
+    !state.conversations.some(c => c.id === s.conversationId && c.kind === 'direct' && c.member === s.member))) invalid();
   const coordinationValid = (config, members) => config && typeof config === 'object' && config.lead !== config.reviewer &&
     members.some(m => m.name === config.lead) && members.some(m => m.name === config.reviewer && !m.writable);
   if (state.coordination != null && !coordinationValid(state.coordination, state.members)) invalid();
@@ -41,11 +62,17 @@ export function validateState(state) {
   if (new Set(state.tasks.map(t => t?.id)).size !== state.tasks.length || new Set(state.workflows.map(f => f?.id)).size !== state.workflows.length) invalid();
   for (const flow of state.workflows) {
     if (!flow || !ID.test(flow.id) || typeof flow.text !== 'string' || !FLOW_STATUS.has(flow.status) || !Number.isFinite(flow.createdAt)) invalid();
+    if (!steeringValid(flow.steering) || flow.workspace != null && typeof flow.workspace !== 'string' || flow.branch != null && flow.branch !== `pongkan/${flow.id}`) invalid();
+    if (flow.baseCommit != null && !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(flow.baseCommit)) invalid();
+    if (flow.conversations && (typeof flow.conversations !== 'object' || Array.isArray(flow.conversations) ||
+      Object.entries(flow.conversations).some(([name, id]) => id && !state.conversations.some(c => c.id === id && c.member === name && c.kind === 'direct')))) invalid();
+    if (flow.sourceConversationId && !state.conversations.some(c => c.id === flow.sourceConversationId && c.kind === 'group')) invalid();
   }
   const ids = new Set(state.tasks.map(t => t?.id));
   const flows = new Set(state.workflows.map(f => f.id));
   const discussions = new Set(state.discussions.map(d => d.id));
-  if (discussions.size !== state.discussions.length || state.discussions.some(d => d.taskIds.some(id => !ids.has(id)))) invalid();
+  if (discussions.size !== state.discussions.length || state.discussions.some(d => d.taskIds.some(id => !ids.has(id)) ||
+    d.conversationId && !state.conversations.some(c => c.id === d.conversationId && c.kind === 'group'))) invalid();
   for (const task of state.tasks) {
     if (!task || !ID.test(task.id) || !NAME.test(task.member) || typeof task.text !== 'string' || !TASK_STATUS.has(task.status) ||
         !Number.isFinite(task.createdAt) || !['message', 'plan', 'work', 'review', 'summary'].includes(task.kind) ||
@@ -53,6 +80,8 @@ export function validateState(state) {
         (task.workflowId && !flows.has(task.workflowId)) || (task.dependsOn && (!ids.has(task.dependsOn) || task.dependsOn === task.id)) ||
         (['running', 'queued', 'waiting'].includes(task.status) && !state.members.some(m => m.name === task.member))) invalid();
     if (task.result !== undefined && typeof task.result !== 'string') invalid();
+    if (task.conversationId && !state.conversations.some(c => c.id === task.conversationId && c.kind === 'direct' && c.member === task.member)) invalid();
+    if (!steeringValid(task.steering)) invalid();
     if (task.status === 'waiting' && (typeof task.question !== 'string' || !task.question.trim())) invalid();
     if (task.answers !== undefined && (!Array.isArray(task.answers) || task.answers.some(a => !a || typeof a.question !== 'string' || typeof a.answer !== 'string'))) invalid();
   }

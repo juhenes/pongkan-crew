@@ -35,3 +35,11 @@ id_ed25519
 
 # Local release-audit scratch output
 .release-audit*
+
+# Local test output and interrupted test fixtures
+/.test-*.log
+/test/markdown-artifacts-*/
+/test/markdown-restart-*/
+
+# Temporary Markdown export files left after an interrupted write
+.pongkan-export-*.tmp

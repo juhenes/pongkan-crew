@@ -3,7 +3,8 @@ import { ROLES, roleMember } from './roles.js';
 import { presetListRows } from './preset-display.js';
 import { directMessages } from './conversations.js';
 import { spacedRoleText } from './role-display.js';
-import { readModelCatalog, modelLabel, validateModelChoice, modelCatalogLines } from './models.js';
+import { readModelCatalog, readModelDefaults, modelLabel, validateModelChoice, modelCatalogLines } from './models.js';
+import { steer } from './steering.js';
 export const HELP = [
   'Enter one command at a time. UPPERCASE = replace with a value; [VALUE] = optional.',
   'Names below use the default crew; /crew list shows your actual names.',
@@ -38,11 +39,28 @@ export const HELP = [
   '/chat [NAME]                  Return to chat, optionally select teammate',
   '/next /prev                   Cycle teammates and Crew Chat',
   '/task TEXT                    Lead plans, dispatches, reviews, summarizes',
+  '/crew-task [GOAL]             Execute latest Crew Chat plan; optional goal',
+  '/task --isolated GOAL         Run in a separate Git worktree',
+  '/crew-task --isolated [GOAL]  Execute discussion in a separate worktree',
+  '/worktree list|show ID        Inspect retained isolated workflow changes',
+  '/steer TASK_OR_WORKFLOW_ID TEXT Queue a correction at the next task boundary',
+  '/schedule add MINUTES NAME GOAL Create a recurring read-only task',
+  '/schedule add MINUTES NAME --write GOAL Allow member write permissions',
+  '/schedule list|pause ID|resume ID|run ID Manage recurring tasks',
+  '/github issue|pr OWNER/REPO NUMBER Read a GitHub issue or PR',
+  '/github task OWNER/REPO NUMBER [--isolated] Implement an issue locally',
+  '/conversation list           List named conversations',
+  '/conversation new NAME|group TITLE Create an isolated chat',
+  '/conversation open ID        Reopen a conversation',
+  '/conversation archive|restore ID Keep or reopen saved history',
+  '/conversation default [NAME|group] Return to legacy chat',
+  '/memory show|add TEXT|remove ID Manage editable project decisions',
   '/send NAME TEXT               Send work to a specific teammate',
   '/handoff NAME [TASK]           Send selected agent\'s latest answer',
   '/retry                        Resend selected agent\'s last user message',
   '/questions [on|off|list]       Clarification mode and pending questions',
   '/answer TASK_ID TEXT          Answer and continue the same assignment',
+  'Shift+Right                  Fill answer command; press again for next question',
   '/stop [NAME|all]              Cancel work (selected agent by default)', '',
   'TASK QUEUE AND WORKFLOWS',
   '/queue list                   Show durable tasks and IDs',
@@ -60,6 +78,7 @@ export const HELP = [
   '/new                          Clear transcript and start fresh session',
   '/status                       Show the whole crew\'s current status',
   '/context [on|off|status]       Control local context clipping; inspect character counts',
+  '/markdown [on|off]            Save task and discussion Markdown in docs/pongkan-docs',
   '/model [NAME]                 Show model settings and live status',
   '/model list                   Browse locally cached Codex models',
   '/model set NAME|all MODEL [EFFORT] Choose model for future tasks',
@@ -96,7 +115,7 @@ export const HELP = [
   'Ctrl+L                        Redraw screen',
   'Ctrl+C                        Stop all work and quit', '',
   'NOTES',
-  'Only one writer can run at once. Readers can run alongside it.',
+  'One writer per workspace. Isolated worktrees can run in parallel.',
   'Stop a teammate before removing, renaming or reconfiguring it.',
   'Remove/clear/new archive local history. /undo restores the latest change.',
   'Saved queued work starts paused after restart. /queue resume continues it.',
@@ -107,7 +126,7 @@ export const HELP = [
 
 function idle(crew, name) {
   const member = crew.member(name);
-  if (crew.running.has(name)) throw new Error('Stop this teammate before changing it.');
+  if ([...crew.running.keys()].some(key => key === name || key.startsWith(`${name}:`))) throw new Error('Stop this teammate before changing it.');
   if (crew.state.tasks.some(task => task.member === name && ['queued', 'waiting'].includes(task.status))) throw new Error('Answer or cancel waiting/queued tasks for this teammate before changing it.');
   if (crew.state.workflows.some(flow => !TERMINAL.has(flow.status))) throw new Error('Cancel or finish active workflows before changing the crew.');
   return member;
@@ -132,6 +151,13 @@ export function execute(app, line) {
   if (line === '?' || line === '/help') { panel('HELP', HELP); return; }
   if (!line.startsWith('/')) {
     const mention = line.match(/^@([a-z][a-z0-9-]*)(?:[,:]?\s+)([\s\S]+)$/);
+    if (!mention && app.view === 'group' && crew.discussions.current &&
+        /^(?:please\s+)?(?:proceed|go ahead|implement|execute)(?:\s+(?:with\s+)?(?:that|this|it|the plan|the agreed plan|the suggestions))?[.!]*$/i.test(line.trim())) {
+      const flow = crew.workflows.start(crew.discussions.executionGoal(line), { sourceConversationId: crew.state.activeGroupConversation });
+      app.selected = crew.leadName; app.view = 'chat'; app.panel = null;
+      app.notice = `Workflow ${flow.id} created from Crew Chat${crew.queue.paused ? '; /queue resume to start' : ''}.`;
+      return;
+    }
     if (mention || app.view === 'group') {
       crew.discussions.start(mention ? mention[2] : line, mention?.[1]);
       app.view = 'group'; app.panel = null;
@@ -244,6 +270,8 @@ export function execute(app, line) {
         if ([crew.leadName, crew.reviewerName].includes(name)) throw new Error('Cannot remove the designated lead or reviewer. Apply another preset first.');
         crew.archive(`remove ${name}`);
         crew.state.members = crew.state.members.filter(m => m !== member);
+        delete crew.state.activeConversations[name];
+        for (const job of crew.state.schedules.filter(s => s.member === name)) job.enabled = false;
         if (app.selected === name) app.selected = crew.state.members[0].name;
         app.notice = `Removed ${name}. Use /undo to restore its history.`;
       } else if (action === 'rename') {
@@ -251,6 +279,13 @@ export function execute(app, line) {
         if (rest.length !== 1 || !/^[a-z][a-z0-9-]{0,31}$/.test(next)) throw new Error('Use one lowercase name, up to 32 letters, numbers or hyphens.');
         if (crew.state.members.some(m => m.name === next)) throw new Error('That teammate already exists.');
         member.name = next;
+        for (const c of crew.state.conversations) if (c.member === name) c.member = next;
+        for (const t of crew.state.tasks) if (t.conversationId && t.member === name) t.member = next;
+        for (const job of crew.state.schedules) if (job.member === name) job.member = next;
+        for (const flow of crew.state.workflows) if (Object.hasOwn(flow.conversations || {}, name)) {
+          flow.conversations[next] = flow.conversations[name]; delete flow.conversations[name];
+        }
+        if (crew.state.activeConversations[name]) { crew.state.activeConversations[next] = crew.state.activeConversations[name]; delete crew.state.activeConversations[name]; }
         if (crew.state.coordination) for (const key of ['lead', 'reviewer']) if (crew.state.coordination[key] === name) crew.state.coordination[key] = next;
         if (app.selected === name) app.selected = next;
       } else if (action === 'role') {
@@ -277,31 +312,129 @@ export function execute(app, line) {
     if (parts[0] === 'all') {
       crew.queue.pause();
       for (const task of crew.state.tasks) if (!TERMINAL.has(task.status)) crew.queue.cancel(task.id);
-      for (const name of crew.running.keys()) crew.stop(name);
+      for (const controller of crew.running.values()) controller.abort();
       app.notice = 'All tasks cancelled; queue paused.';
     } else {
       const name = parts[0] || app.selected; crew.member(name);
-      const task = crew.state.tasks.find(t => t.member === name && t.status === 'running');
+      const conversationId = crew.state.activeConversations[name] || null;
+      const task = crew.state.tasks.find(t => t.member === name && (t.conversationId || null) === conversationId && t.status === 'running');
       if (task) crew.queue.cancel(task.id); else crew.stop(name);
       app.notice = `Stop requested for ${name}.`;
     }
-  } else if (command === '/task') {
-    requireText(text); chat(crew.leadName);
-    const flow = crew.workflows.start(text); app.notice = `Workflow ${flow.id} created${crew.queue.paused ? '; /queue resume to start' : ''}.`;
+  } else if (command === '/task' || command === '/crew-task') {
+    if (command === '/crew-task' && !crew.discussions.current?.messages.length) {
+      throw new Error('No Crew Chat discussion available. Use /discuss TOPIC first, or /task GOAL for a standalone task.');
+    }
+    const isolated = parts[0] === '--isolated';
+    const goalText = isolated ? parts.slice(1).join(' ') : text;
+    const request = command === '/crew-task' ? goalText || 'Implement the agreed plan from the latest Crew Chat discussion.' : requireText(goalText);
+    const goal = command === '/crew-task' || app.view === 'group' ? crew.discussions.executionGoal(request) : request;
+    const options = { sourceConversationId: command === '/crew-task' || app.view === 'group' ? crew.state.activeGroupConversation : null };
+    const opened = flow => {
+      if (flow.workspace) crew.conversations.open(flow.conversations[crew.leadName]);
+      chat(crew.leadName);
+      app.notice = `Workflow ${flow.id} created${flow.workspace ? ` in ${flow.branch}` : ''}${crew.queue.paused ? '; /queue resume to start' : ''}.`;
+    };
+    if (isolated) return crew.workflows.startIsolated(goal, options).then(opened);
+    opened(crew.workflows.start(goal, options));
+  } else if (command === '/worktree') {
+    if ((!parts.length || parts[0] === 'list') && parts.length <= 1) panel('ISOLATED WORKFLOWS', () =>
+      crew.state.workflows.filter(f => f.workspace).flatMap(f => [`${f.id} ${f.status} · ${f.branch}`, f.workspace,
+        `Chats: ${Object.entries(f.conversations || {}).map(([name, id]) => `${name}=${id}`).join(' ')}`, '']));
+    else if (parts[0] === 'show' && parts.length === 2) return load('WORKTREE CHANGES', crew.worktrees.diff(parts[1]).then(text => text.split('\n')));
+    else throw new Error('Use /worktree list|show WORKFLOW_ID. Worktrees are retained; commit and merge them explicitly with Git.');
   }
   else if (command === '/send') { crew.member(parts[0]); app.send(parts[0], requireText(parts.slice(1).join(' '))); }
   else if (command === '/handoff') {
     crew.member(parts[0]);
-    const answer = directMessages(crew.member(app.selected)).findLast(m => m.role === 'assistant');
+    const answer = directMessages(crew.chatMember(app.selected)).findLast(m => m.role === 'assistant');
     if (!answer) throw new Error('No answer available to hand off yet.');
     app.send(parts[0], `Handoff from ${app.selected}:\n${answer.text}\n\n${parts.slice(1).join(' ') || 'Continue from these findings according to your role.'}`);
     crew.notify(`${app.selected} -> ${parts[0]}: handoff`);
   } else if (command === '/retry') {
-    const member = idle(crew, app.selected);
+    const conversationId = crew.state.activeConversations[app.selected] || null;
+    if (crew.running.has(crew.runKey(app.selected, conversationId)) || crew.state.tasks.some(t => t.member === app.selected &&
+      (t.conversationId || null) === conversationId && ['queued', 'waiting'].includes(t.status))) throw new Error('Finish or cancel work in this conversation before retrying.');
+    const member = crew.chatMember(app.selected);
     const last = directMessages(member).findLast(m => m.role === 'user');
     if (!last) throw new Error('No previous user message to retry.');
     app.send(app.selected, last.text);
+  } else if (command === '/github') {
+    const [action, repo, number, flag, ...extra] = parts;
+    if (extra.length || flag && (action !== 'task' || flag !== '--isolated') || !['issue', 'pr', 'task'].includes(action)) throw new Error('Use /github issue|pr|task OWNER/REPO NUMBER [--isolated for task].');
+    const pending = crew.github.read(action === 'pr' ? 'pr' : 'issue', repo, number);
+    if (action !== 'task') return load('GITHUB SOURCE', pending.then(record => [record.url, record.state, '', record.title, '', ...record.body.split('\n')]));
+    app.notice = 'Reading GitHub issue…';
+    return pending.then(async record => {
+      const goal = crew.github.goal(record);
+      const flow = flag ? await crew.workflows.startIsolated(goal) : crew.workflows.start(goal);
+      if (flow.workspace) crew.conversations.open(flow.conversations[crew.leadName]);
+      chat(crew.leadName); app.notice = `Workflow ${flow.id} created from GitHub issue. No remote changes sent.`;
+    });
+  } else if (command === '/schedule') {
+    const [action = 'list', id, ...rest] = parts;
+    if (action === 'list' && !id) panel('SCHEDULES', () => ['Runs require the app or --worker to be running.', '', ...crew.state.schedules.map(s =>
+      `${s.id} ${s.enabled ? 'on' : 'paused'} · ${s.member} · every ${s.minutes}m · ${s.readOnly ? 'read-only' : 'member access'} · ${new Date(s.nextRun).toISOString()}\n${s.text}`)]);
+    else if (action === 'add') {
+      const [member, ...goal] = rest;
+      const writable = goal[0] === '--write';
+      const job = crew.scheduler.add(Number(id), member, (writable ? goal.slice(1) : goal).join(' '), writable);
+      app.notice = `Schedule ${job.id} saved. Keep the app or --worker running.`;
+    } else if (['pause', 'resume'].includes(action) && id && !rest.length) {
+      crew.scheduler.setEnabled(id, action === 'resume'); app.notice = `Schedule ${action}d.`;
+    } else if (action === 'run' && id && !rest.length) {
+      crew.scheduler.get(id);
+      const tasks = crew.scheduler.tick(Date.now(), id);
+      app.notice = tasks.length ? `Task ${tasks[0].id} queued.` : 'Queue paused or schedule task still active.';
+    } else throw new Error('Use /schedule add MINUTES NAME [--write] GOAL|list|pause ID|resume ID|run ID.');
+  } else if (command === '/steer') {
+    const entry = steer(crew, parts[0], parts.slice(1).join(' '));
+    app.notice = `Instruction ${entry.id} saved for the next task boundary; the running turn is not interrupted.`;
+  } else if (command === '/memory') {
+    const [action = 'show', ...rest] = parts;
+    if (action === 'show' && !rest.length) panel('PROJECT MEMORY', () => [crew.memory.file, '',
+      ...crew.memory.list().map(e => `${e.id}: ${e.text}`), '', 'Use /memory add TEXT or /memory remove ID. This guidance does not grant permissions.']);
+    else if (action === 'add') app.notice = `Saved memory ${crew.memory.add(requireText(rest.join(' '))).id}.`;
+    else if (action === 'remove' && rest.length === 1) { crew.memory.remove(rest[0]); app.notice = 'Memory removed.'; }
+    else throw new Error('Use /memory show|add TEXT|remove ID.');
+  } else if (command === '/conversation') {
+    const [action = 'list', target, ...title] = parts;
+    if (action === 'list' && !target) panel('CONVERSATIONS', () => crew.state.conversations.length ?
+      crew.state.conversations.map(c => `${c.id} ${c.kind === 'group' ? 'Crew Chat' : c.member} · ${c.title}${c.archived ? ' (archived)' : ''}`) : ['No named conversations. Use /conversation new NAME|group TITLE.']);
+    else if (action === 'new') {
+      const c = crew.conversations.create(target, title.join(' '));
+      app.view = c.kind === 'group' ? 'group' : 'chat';
+      if (c.member) app.selected = c.member;
+      app.panel = null; app.scroll = 0; app.notice = `Conversation ${c.id}: ${c.title}`;
+    } else if (action === 'open' && target && !title.length) {
+      const c = crew.conversations.open(target);
+      app.view = c.kind === 'group' ? 'group' : 'chat';
+      if (c.member) app.selected = c.member;
+      app.panel = null; app.scroll = 0; app.notice = c.title;
+    } else if (['archive', 'restore'].includes(action) && target && !title.length) {
+      const c = crew.conversations.archive(target, action === 'archive'); app.notice = `${action}: ${c.title}`;
+    } else if (action === 'default' && !title.length) {
+      if (target === 'group') { crew.state.activeGroupConversation = null; app.view = 'group'; }
+      else { const name = target || app.selected; crew.member(name); delete crew.state.activeConversations[name]; chat(name); }
+      crew.save(); app.panel = null; app.scroll = 0;
+    } else throw new Error('Use /conversation list|new NAME|group TITLE|open ID|archive ID|restore ID|default [NAME|group].');
   } else if (command === '/new' || command === '/clear') {
+    if (app.view === 'group') {
+      if (command === '/clear') throw new Error('Use /new to start a blank Crew Chat. Previous discussions remain saved.');
+      if (crew.state.activeGroupConversation) {
+        if (crew.discussions.current?.status === 'working') throw new Error('A discussion is active. Use /stop before starting a fresh conversation.');
+        crew.conversations.create('group', 'New Crew Chat');
+      }
+      crew.discussions.newConversation();
+      app.panel = null; app.scroll = 0;
+      app.notice = 'Fresh Crew Chat ready. Previous discussions remain saved.';
+      return;
+    }
+    if (crew.state.activeConversations[app.selected]) {
+      if (command === '/clear') throw new Error('Use /conversation archive ID to keep this history, or /new for a blank conversation.');
+      const c = crew.conversations.create(app.selected, 'New conversation');
+      app.panel = null; app.scroll = 0; app.notice = `Fresh conversation ${c.id} ready.`; return;
+    }
     const member = idle(crew, app.selected);
     crew.archive(`${command.slice(1)} ${app.selected}`);
     member.messages = []; member.status = 'ready';
@@ -326,6 +459,8 @@ export function execute(app, line) {
     else if (action === 'show') {
       crew.queue.get(id);
       panel(`TASK ${id}`, () => { const task = crew.queue.get(id); return [`${task.status} -> ${task.member}`, `Depends on: ${task.dependsOn || 'none'}`,
+        `Conversation: ${task.conversationId || 'default'}`, ...(task.steering || []).map(s =>
+          `Correction ${s.id}: ${s.text} (${s.appliedAt ? `delivered ${new Date(s.appliedAt).toISOString()}` : 'pending'})`),
         `Elapsed: ${task.startedAt ? Math.floor(((task.finishedAt || Date.now()) - task.startedAt) / 1000) : 0}s`, '', 'PROMPT', task.text, '', 'RESULT', task.result || '(none)', '', 'ERROR', task.error || '(none)']; });
     } else if (action === 'pause') crew.queue.pause();
     else if (action === 'resume') crew.queue.resume();
@@ -338,10 +473,17 @@ export function execute(app, line) {
     if (!action || action === 'list') panel('WORKFLOWS', () => crew.state.workflows.length ? crew.state.workflows.map(f => `${f.id} ${f.status}: ${f.text}`) : ['No workflows. Use /task GOAL.']);
     else if (action === 'show') {
       crew.workflows.get(id);
-      panel(`WORKFLOW ${id}`, () => { const flow = crew.workflows.get(id); return [`Status: ${flow.status}`, `Goal: ${flow.text}`, '',
+      panel(`WORKFLOW ${id}`, () => { const flow = crew.workflows.get(id); return [`Status: ${flow.status}`, `Goal: ${flow.text}`,
+        ...(flow.workspace ? [`Branch: ${flow.branch}`, `Worktree: ${flow.workspace}`, ...Object.entries(flow.conversations || {}).map(([name, id]) => `${name}: /conversation open ${id}`)] : []),
+        ...(flow.steering || []).map(s => `Correction: ${s.text}`), '',
         ...crew.state.tasks.filter(t => t.workflowId === id).map(t => `${t.id} ${t.kind} -> ${t.member}: ${t.status}`), '', 'SUMMARY', flow.result || '(pending)', '', 'ERROR', flow.error || '(none)']; });
     } else if (action === 'cancel') crew.workflows.cancel(id);
-    else if (action === 'retry') app.notice = `Workflow ${crew.workflows.retry(id).id} created. Retry may repeat earlier edits.`;
+    else if (action === 'retry') {
+      const result = crew.workflows.retry(id);
+      const show = flow => { app.notice = `Workflow ${flow.id} created. Retry may repeat earlier edits.`; };
+      if (result?.then) return result.then(show);
+      show(result);
+    }
     else throw new Error('Use /workflow list|show|cancel|retry.');
   } else if (command === '/diff') {
     if (parts[0] === 'git' || (!parts[0] && !crew.state.lastDiff)) return load('REPOSITORY DIFF', gitDiff(crew.folder).then(diff => diff.split('\n')));
@@ -351,10 +493,15 @@ export function execute(app, line) {
   else if (command === '/doctor') return load('STARTUP CHECKS', checkRuntime().then(result => [result.ok ? 'READY' : 'ACTION NEEDED', ...result.lines, `Folder: ${crew.folder}`, `Saved state: ${crew.file}`]));
   else if (command === '/progress') {
     const name = parts[0] || app.selected; crew.member(name);
-    panel(`PROGRESS ${name}`, () => { const m = crew.member(name), p = m.progress; return [
+    panel(`PROGRESS ${name}`, () => { const m = crew.chatMember(name), p = m.progress; return [
       `Status: ${m.status}`, `Action: ${p?.action || 'Not started'}`, `Elapsed: ${p ? Math.floor(((p.finishedAt || Date.now()) - p.startedAt) / 1000) : 0}s`,
       `Requested model: ${modelLabel(p || m)}`,
       `Events: ${p?.events || 0}`, '', 'CHANGED FILES', ...(p?.files || []), '', 'LATEST SYSTEM MESSAGE', directMessages(m).findLast(msg => msg.role === 'system')?.text || '(none)']; });
+  }
+  else if (command === '/markdown') {
+    if (parts.length > 1 || (text && !['on', 'off'].includes(text))) throw new Error('Use /markdown on|off.');
+    if (text) crew.setMarkdown(text === 'on');
+    app.notice = `Markdown saving ${crew.state.markdownEnabled ? 'ON' : 'OFF'}; destination: ${crew.folder}/docs/pongkan-docs. Existing documents are retained.`;
   }
   else if (command === '/context') {
     if (parts.length > 1 || (text && !['on', 'off', 'status'].includes(text))) throw new Error('Use /context on|off|status.');
@@ -397,13 +544,18 @@ export function execute(app, line) {
       app.notice = 'Model settings saved for future turns. Conversation history is preserved.';
     } else if (parts.length <= 1) {
       const name = action || app.selected; crew.member(name);
-      panel(`MODEL ${name}`, () => { const member = crew.member(name); return [
-        `Status: ${member.status}`, `Requested model: ${modelLabel(member)}`,
+      const render = (defaults = {}) => { const member = crew.chatMember(name); return [
+        `Status: ${member.status}`, `Requested model: ${modelLabel(member, defaults)}`,
         `Action: ${member.progress?.action || 'Not started'}`,
         `Last turn requested: ${member.progress ? modelLabel(member.progress) : 'Not started'}`, '',
         'Model selections are requests; Codex reports errors for unavailable models.',
-        'Inherited defaults are resolved by Codex, including project settings.',
-        'Use /model list, /model set NAME|all MODEL [EFFORT], or /model reset [NAME|all].']; });
+        'Inherited settings are resolved by Codex for this project; running sessions may differ.',
+        'Use /model list, /model set NAME|all MODEL [EFFORT], or /model reset [NAME|all].']; };
+      const member = crew.member(name);
+      if (member.model && member.reasoningEffort) panel(`MODEL ${name}`, () => render());
+      else return load(`MODEL ${name}`, readModelDefaults(crew.state.workflows.find(f => f.workspace && Object.values(f.conversations || {}).includes(crew.state.activeConversations[name]))?.workspace || crew.folder)
+        .then(defaults => render(defaults))
+        .catch(() => [...render(), '', 'Inherited model unavailable. Use /model set to choose a specific model.']));
     } else throw new Error('Use /model [NAME], /model list, /model set NAME|all MODEL [EFFORT], or /model reset [NAME|all].');
   }
   else if (command === '/status') panel('STATUS', () => [`Preset: ${crew.state.activePreset || 'default / customized'}`, `Lead: ${crew.leadName} | Reviewer: ${crew.reviewerName}`,

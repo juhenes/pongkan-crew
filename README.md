@@ -1,5 +1,7 @@
 # Pongkan Crew
 
+Use `/markdown on` to save subsequent task and Crew Chat changes as Markdown in the selected project's `docs/pongkan-docs/`, creating the directories when missing. `/markdown off` stops future exports and retains existing documents; `/markdown` reports the mode. The setting defaults to off and persists per project. Records update by ID during iteration; retries and discussion follow-ups get separate files. Enabling does not export unchanged historical records. Export failures appear in Activity without discarding task results.
+
 [Command reference](docs/COMMANDS.md) · [Todo website walkthrough](docs/TODO_WEBSITE_WALKTHROUGH.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [License](LICENSE)
 
 Pongkan Crew runs named Codex teammates from a terminal. Chat with one teammate, ask the lead to coordinate a task, and follow the work in Activity. Each target folder has its own crew, conversations, and task history.
@@ -68,19 +70,49 @@ The todo walkthrough uses the default crew; the web preset is optional.
 
 Chat holds individual conversations, Crew Chat holds shared discussions, and Activity follows the team's work.
 
-### Task workflows and Crew Chat are separate
+### Discussions and the shared workflow feed
 
 `/task GOAL` asks the lead to plan sequential assignments, send work to individual teammates, arrange an independent review, and summarize their results. Read each teammate's work in their individual Chat and the final summary in the lead's Chat. Use `/activity` to follow the whole workflow.
 
-Crew Chat shows shared conversations started with `/discuss TOPIC` and directed replies requested with `@NAME MESSAGE`. Task assignments, handoffs, and results are not automatically copied into Crew Chat, so it can remain blank even while a `/task` workflow is running or has finished.
+Crew Chat shows shared conversations started with `/discuss TOPIC` and directed replies requested with `@NAME MESSAGE`. It also shows real workflow assignments, handoffs, status, results, questions, and errors. The feed derives from saved task records and shows the latest 40 tasks with short previews. Use `/queue show TASK_ID` for a full result and `/workflow show WORKFLOW_ID` for the plan and summary. Named Crew Chats show workflows launched from that conversation; the default Crew Chat provides the project-wide feed.
+
+**Typing an ordinary message in Crew Chat starts a read-only discussion, just like `/discuss`.** Each message, including a short follow-up such as `What are the tradeoffs?`, triggers two crew rounds followed by the lead's summary when a lead is present. Teammates discuss and suggest changes; they do not edit files during these turns. Wait for the discussion to finish before sending another message, or use `/stop` to end it.
+
+To request one read-only reply, use `@developer MESSAGE` (or another teammate's name). To execute the discussed plan, say `Proceed with that` or `Implement the plan` after the discussion finishes, or use `/task YOUR_GOAL`. These execution requests create a workflow and switch to the lead's individual Chat. For other wording, use `/task` explicitly; ordinary prose is treated as discussion.
+
+Crew Chat follow-ups retain the prior conversation, including after restarting the app. Ordinary messages and `@NAME` replies continue the read-only discussion. After the discussion finishes, say `Proceed with that` or `Implement the plan` to create a task workflow using the discussion as context. `/task GOAL` from Crew Chat also carries that context and switches to the lead's individual chat to follow execution.
+
+Use `/new` in Crew Chat to open a blank shared conversation. Previous discussions remain saved, and individual chats are unaffected. Stop an active discussion before starting a new conversation.
+
+### Choosing `/task` or `/crew-task`
+
+Both commands ask the lead to plan assignments, dispatch teammates, arrange read-only review, and summarize the result. They use the same workflow engine, queue, permissions, and writer coordination. Both populate the shared workflow feed in Crew Chat; full replies remain in individual Chat and Activity follows live actions.
+
+| Behavior | `/task GOAL` | `/crew-task [GOAL]` |
+| --- | --- | --- |
+| Goal required? | Yes | No; defaults to implementing the agreed Crew Chat plan |
+| Crew Chat context | Included when invoked from Crew Chat; not automatically included from other tabs | Latest Crew Chat included from any tab |
+| Requires an existing Crew Chat? | No | Yes; the latest conversation must contain messages |
+| Where execution opens | Lead's individual Chat | Lead's individual Chat |
+| Separate workspace | `/task --isolated GOAL` | `/crew-task --isolated [GOAL]` |
+| Best use | A new task with an explicit goal | Turn a discussion into work without repeating its plan |
+
+After discussing a plan, enter `/crew-task` to execute it, or `/crew-task Only implement keyboard support` to narrow the goal while retaining discussion context. Wait for any active discussion to finish, or use `/stop` in Crew Chat first. `/crew-task` uses the latest conversation; after `/new`, discuss the new topic before using it. If the discussion has no clear agreed plan, the lead may need clarification.
+
+Individual chats include their saved conversation in follow-up prompts, even when resuming an existing session. With `/context off`, saved history is sent without local clipping; `/context on` can shorten assistant replies while retaining user messages. `/new` and `/clear` still explicitly reset or clear individual history.
 
 | What you want | Command | Where to follow it |
 | --- | --- | --- |
 | Coordinated implementation and review | `/task GOAL` | Individual Chat, lead's summary, and Activity |
+| Execute the latest Crew Chat plan from any tab | `/crew-task` or `/crew-task GOAL` | Individual Chat, lead's summary, and Activity |
 | Read-only discussion with the crew | `/discuss TOPIC` | Crew Chat |
+| Continue discussion with two crew rounds and a lead summary | Type an ordinary message in Crew Chat | Crew Chat |
 | One read-only reply using shared discussion context | `@NAME MESSAGE` | Crew Chat |
+| Execute the discussed plan | `Proceed with that` or `/task YOUR_GOAL` from Crew Chat | Individual Chat, lead's summary, and Activity |
 
 Tab/Shift+Tab cycles teammates and Crew Chat. F2 cycles views; PgUp/PgDn scroll. Switching views keeps work running.
+
+Press **Shift+Right** to answer a waiting question: the question opens and `/answer TASK_ID ` is filled in automatically. Type your reply and press Enter. Any existing draft is kept as the reply; press Shift+Right again to cycle through waiting questions.
 
 To meet the current crew, ask every teammate to introduce themselves. Paste this as one command:
 
@@ -99,6 +131,83 @@ For a planning discussion, try:
 Teammates discuss for two rounds, then the lead summarizes. Discussions support up to twelve members and use separate sessions from individual chats.
 
 ## Everyday controls
+
+### Separate conversations and parallel work
+
+Use named chats to keep topics and Codex sessions separate. They save automatically, reopen after restart, and keep running when you switch conversations.
+
+```text
+/conversation new developer Login fixes
+/conversation new group Navigation plan
+/conversation list
+/conversation open CHAT_ID
+/conversation archive CHAT_ID
+/conversation restore CHAT_ID
+/conversation default developer
+```
+
+Replace `CHAT_ID` with an ID from the list. Archiving keeps history and requires its work to finish or be cancelled; pause a linked schedule first. `/conversation default group` opens the original Crew Chat and project-wide workflow feed. `/new` in a named chat opens a blank conversation while retaining its history. `/clear` remains a legacy individual-chat control; use archive/new for named chats.
+
+Read-only tasks in separate individual conversations can run concurrently. Writers in the same workspace are serialized. For parallel implementation, open a committed Git repository root and run each goal in a separate worktree:
+
+```text
+/task --isolated Build the settings page
+/task --isolated Add navigation tests
+/worktree list
+/worktree show WORKFLOW_ID
+```
+
+Each isolated workflow gets its own branch, working folder, and teammate sessions. Dependencies within each workflow stay sequential; independent workflows can run together. Worktrees start from `HEAD`: commit or stash tracked changes first; untracked files, local credentials, dependencies, and uncommitted configuration are not copied. Install any needed dependencies explicitly inside the worktree. `/worktree list` shows paths and chat IDs, and `/workflow show ID` provides commands to open each teammate's chat. Results and captured diffs stay tied to their workflow.
+
+Branches and worktrees are retained for review. To combine work, inspect and commit changes in the displayed worktree, then explicitly merge its `pongkan/ID` branch with Git from your main working folder. The app does not commit, merge, remove, or publish them automatically. Multiple chats and isolated workflows run inside one app; the existing folder lock still prevents two CMD instances from writing the same project's state.
+
+### Project memory and corrections
+
+```text
+/memory add Preserve keyboard navigation and use npm.
+/memory show
+/memory remove MEMORY_ID
+/steer TASK_OR_WORKFLOW_ID Keep the existing colors.
+```
+
+Memory is an editable list in `.pongkan-crew/project-memory.json`, shared across project conversations and worktrees. It accepts up to 50 entries, 2,000 characters per entry, and 40 KB total. Duplicate additions reuse the existing entry. Memory provides guidance, never additional permissions; edit or remove stale decisions yourself.
+
+Steering saves a correction at the next task boundary, without interrupting the current command. A running task receives a continuation turn after its current turn finishes; a queued task receives it when it starts. Workflow corrections apply to current and later assignments. Finished tasks need a new assignment; waiting clarification questions still require `/answer`. Use `/queue show ID` to inspect corrections and their delivery timestamps.
+
+### Recurring checks and a background worker
+
+```text
+/schedule add 60 researcher Check project health without editing files.
+/schedule list
+/schedule pause SCHEDULE_ID
+/schedule resume SCHEDULE_ID
+/schedule run SCHEDULE_ID
+```
+
+Schedules are read-only by default. `/schedule add 60 developer --write YOUR_GOAL` explicitly permits that teammate's normal write access. Jobs use dedicated saved conversations, coalesce missed intervals into one run, and never overlap their own pending task. Pausing the queue also pauses dispatch. Scheduled work runs while the interactive app is open, or through the headless worker below.
+
+Run these commands in an external terminal, with absolute paths appropriate for your installation:
+
+```text
+node src/cli.js --folder "C:\path\to\project" --worker
+node src/cli.js --folder "C:\path\to\project" --worker --once
+```
+
+`--worker` polls for due schedules until stopped. `--once` dispatches due schedules, waits for their active turns, and exits; it can be launched periodically by Windows Task Scheduler with the path to `node.exe`, an absolute path to `src/cli.js`, and these arguments. A persistent worker can also be launched by Task Scheduler to survive closing CMD. No service or scheduled task is installed automatically. The computer must remain on, and the worker must run under your configured Codex account. Stop the interactive app before starting the worker: both use the same folder lock. Saved paused or interrupted work requires inspection and explicit recovery; the worker does not silently resume it. Tasks requiring human clarification or approval need attention in the interactive app.
+
+### GitHub tools
+
+```text
+/github issue OWNER/REPO 12
+/github pr OWNER/REPO 34
+/github task OWNER/REPO 12 --isolated
+```
+
+Requires an installed GitHub CLI (`gh`) authenticated with access to the repository. Issue and PR commands read their title, body, URL, and status. The task command creates a local workflow from the issue, optionally in an isolated worktree. GitHub text is treated as untrusted source material; these commands do not post comments, open PRs, push, or publish. Browser control, voice, cloud computers, and additional agent engines remain outside this release.
+
+The shared feed stores no duplicate result log, previews are bounded, progress-only state writes are throttled, and terminal messages reuse cached rendering. `/context on` additionally shortens long assistant context without deleting saved history.
+
+Use `/model` (or `/model NAME`) to see the specific requested model and reasoning effort. Inherited settings are resolved through Codex for the current project and labeled `(inherited)`. If Codex cannot resolve them, the panel reports that they are unavailable. This shows the current configuration; a running or previously resumed session may use different settings.
 
 | Need | Command |
 | --- | --- |

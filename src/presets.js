@@ -66,6 +66,8 @@ export class Presets {
     this.crew.state.archives.push({ id: randomUUID().slice(0, 8), at: new Date().toISOString(), reason: `preset ${name}`, kind: 'preset',
       members: structuredClone(this.crew.state.members), coordination: structuredClone(this.crew.state.coordination || null), activePreset: this.crew.state.activePreset || null });
     this.crew.state.members = preset.members.map(m => ({ ...structuredClone(m), status: 'ready', messages: [], threadId: null }));
+    this.crew.state.activeConversations = Object.create(null);
+    for (const job of this.crew.state.schedules) job.enabled = false;
     this.crew.state.coordination = { lead: preset.lead, reviewer: preset.reviewer };
     this.crew.state.activePreset = name;
     this.crew.save(); this.crew.notify(`Applied ${name} preset; previous crew archived. /undo to restore.`);

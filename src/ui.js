@@ -3,16 +3,24 @@ import { layoutInput } from './input.js';
 import { activityStyle } from './activity.js';
 import { displayMessages } from './conversations.js';
 import { roleRows, isRoleHeading } from './role-display.js';
+import { workflowFeed } from './workflow-feed.js';
 export { clean } from './markdown.js';
 const wrap = wrapText;
 const nameLabel = name => name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 const renderedMessages = new WeakMap();
-function messageBody(message, width, folder) {
+function messageBody(message, width, folder, speaker) {
+  let text = message.text;
+  if (message.role === 'assistant' && speaker) {
+    const trimmed = text.trimStart();
+    if (trimmed.slice(0, speaker.length + 1).toLowerCase() === `${speaker.toLowerCase()}:`) {
+      text = trimmed.slice(speaker.length + 1).trimStart();
+    }
+  }
   const cached = renderedMessages.get(message);
-  if (cached && cached.text === message.text && cached.role === message.role && cached.width === width && cached.folder === folder) return cached.rows;
-  const rows = message.role === 'assistant' || message.role === 'user' ? renderMarkdown(message.text, width, { folder }) :
-    wrap(message.text, width).map(text => ({ text, tone: 'body' }));
-  renderedMessages.set(message, { text: message.text, role: message.role, width, folder, rows });
+  if (cached && cached.text === text && cached.role === message.role && cached.width === width && cached.folder === folder) return cached.rows;
+  const rows = message.role === 'assistant' || message.role === 'user' ? renderMarkdown(text, width, { folder }) :
+    wrap(text, width).map(text => ({ text, tone: 'body' }));
+  renderedMessages.set(message, { text, role: message.role, width, folder, rows });
   return rows;
 }
 export function activityLabel(member, now = Date.now()) {
@@ -30,23 +38,24 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   const sidebar = width >= 70 ? 23 : 0;
   const contentWidth = width - sidebar - (sidebar ? 3 : 0);
   const readingWidth = Math.max(12, Math.min(92, contentWidth - 4));
-  const member = crew.member(selected);
+  const member = crew.chatMember ? crew.chatMember(selected) : crew.member(selected);
+  const activeChat = crew.state.conversations?.find(c => c.id === crew.state.activeConversations?.[selected]);
   const waiting = crew.state.tasks?.filter(task => task.status === 'waiting') || [];
-  if (waiting.length) notice = `${waiting.length} question(s) waiting — /questions list | /answer TASK_ID YOUR_REPLY`;
+  if (waiting.length) notice = `${waiting.length} question(s) waiting — Shift+Right to answer | /questions list`;
   const row = (text, tone = 'body') => ({ text, tone });
   const conversation = displayMessages(member, crew.state.tasks, crew.state.workflows).flatMap(m => {
     const label = m.role === 'user' ? 'You' : m.role === 'assistant' ? nameLabel(selected) : 'System';
-    const body = messageBody(m, readingWidth, crew.folder);
+    const body = messageBody(m, readingWidth, crew.folder, selected);
     return [row(label, m.role), ...body, row(''), row('')];
   });
   if (!conversation.length) conversation.push(row(`Say hello to ${selected}.`, 'heading'), row(''), row(''), ...roleRows(member.role, readingWidth), row(''), row(''), row('Press ? for commands.', 'muted'));
   if (member.status === 'working') conversation.push(...wrap(member.progress?.channel === 'group' ?
     'This teammate is working in Crew Chat. F2 to switch tabs.' : `${activityLabel(member)}  /stop to cancel`, readingWidth).map(text => row(text, 'muted')));
-  for (const task of waiting.filter(task => task.member === selected)) conversation.push(row('WAITING FOR YOUR ANSWER', 'heading'),
-    ...wrap(task.question, readingWidth).map(text => row(text)), row(`/answer ${task.id} YOUR_REPLY`, 'selected'));
+  for (const task of waiting.filter(task => task.member === selected && (task.conversationId || null) === (crew.state.activeConversations?.[selected] || null))) conversation.push(row('WAITING FOR YOUR ANSWER', 'heading'),
+    ...wrap(task.question, readingWidth).map(text => row(text)), row('Shift+Right to answer (press again for next question)', 'selected'));
   let content = conversation;
   if (view === 'group') {
-    const discussion = crew.state.discussions?.at(-1);
+    const discussion = crew.discussions ? crew.discussions.current : crew.state.discussions?.at(-1);
     const tasks = crew.state.tasks?.filter(t => t.discussionId === discussion?.id) || [];
     const active = tasks.find(t => t.status === 'running');
     const pending = tasks.find(t => t.status === 'queued');
@@ -54,7 +63,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
     const discussionStatus = paused ? 'paused' : discussion?.status === 'working' && !active ? 'waiting' : discussion?.status;
     content = discussion ? [row(`CREW CHAT · ${discussionStatus}`, 'heading'), row(''),
       ...discussion.messages.flatMap(m => [row(nameLabel(m.speaker), m.role),
-        ...messageBody(m, readingWidth, crew.folder), row(''), row('')])] :
+        ...messageBody(m, readingWidth, crew.folder, m.speaker), row(''), row('')])] :
       [row('Start a crew discussion with /discuss TOPIC.', 'heading'), row(''),
         row('MEET YOUR CREW', 'heading'),
         ...wrap('/discuss Everyone in the current crew, introduce yourself, your role, skills, file access, and one example task. Do not modify files.', readingWidth).map(text => row(text)),
@@ -69,6 +78,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
       if (failed) content.push(...wrap(`${failed.member}: ${failed.error}`, readingWidth).map(text => row(text, 'system')));
       if (discussion.status === 'interrupted') content.push(row('App restarted. Start again with /discuss TOPIC.', 'muted'));
     }
+    content.push(row(''), ...workflowFeed(crew, readingWidth, crew.state.activeGroupConversation));
   }
   if (view === 'activity') {
     const events = crew.activityEvents?.length ? crew.activityEvents : crew.activity.map(text => ({ text }));
@@ -81,7 +91,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
     if (!content.length) content = [row('No team activity yet.', 'heading'), row(''), row('Tasks, commands, searches and handoffs will appear here.', 'muted')];
   }
   const offset = view === 'activity' ? activityScroll : scroll;
-  const activeMembers = crew.state.members.filter(m => m.status === 'working');
+  const activeMembers = crew.liveMembers ? crew.liveMembers() : crew.state.members.filter(m => m.status === 'working');
   const liveRows = view === 'activity' && !panel && activeMembers.length ? [row('LIVE NOW', 'heading'),
     ...activeMembers.slice(0, Math.max(1, Math.min(3, Math.floor((height - 3) / 2)))).flatMap(m => [
       row(`${m.name} · ${activityLabel(m)} · ${Math.max(0, Math.floor((Date.now() - (m.progress?.startedAt || Date.now())) / 1000))}s`, 'selected'),
@@ -102,7 +112,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   const capacity = Math.max(1, Math.floor((height - 11) / 3));
   const selectedIndex = crew.state.members.findIndex(m => m.name === selected);
   const firstMember = Math.min(Math.max(0, selectedIndex - capacity + 1), Math.max(0, crew.state.members.length - capacity));
-  const shown = crew.state.members.slice(firstMember, firstMember + capacity);
+  const shown = crew.state.members.slice(firstMember, firstMember + capacity).map(m => crew.chatMember ? crew.chatMember(m.name) : m);
   const left = [`CREW ${firstMember + 1}-${firstMember + shown.length}/${crew.state.members.length}`, '', ...shown.flatMap(m => [
     `${view === 'chat' && m.name === selected ? '>' : ' '} ${nameLabel(m.name)}`, `  ${m.status === 'working' ? activityLabel(m) : m.status + (m.writable ? ' / write' : '')}`, '',
   ]), view === 'group' ? '> Crew Chat' : '  Crew Chat (Tab)', '', 'VIEWS', view === 'chat' ? '> Chat' : '  Chat', view === 'group' ? '> Crew Chat' : '  Crew Chat: /group', view === 'activity' ? '> Activity' : '  Activity', '', '  F2: switch view'];
@@ -117,8 +127,8 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
     paint(fit(`  Folder: ${crew.folder}`, width), 'muted'), paint('─'.repeat(width), 'muted'),
     paint(fit(panel ? `  ${panel.title}${panelPosition} | PgUp/PgDn: scroll | Esc: close` : view === 'activity' ?
       `  TEAM ACTIVITY  ·  ${activityScroll ? 'History / PgDn: newer' : 'Live / following latest'}  ·  PgUp/PgDn Scroll  ·  /chat Return` :
-      view === 'group' ? '  CREW CHAT · Read-only discussion · @NAME Message · /stop End' :
-      `  ${nameLabel(selected)}  ·  ${status}  ·  Model: ${member.model || 'Codex default'}${elapsed === null ? '' : `  ·  ${member.status === 'working' ? '' : 'last run '}${elapsed}s`}${scroll ? '  ·  History / PgDn: newer' : ''}`, width), 'heading')];
+      view === 'group' ? `  CREW CHAT · ${crew.state.conversations?.find(c => c.id === crew.state.activeGroupConversation)?.title || 'Discussion and workflow feed'} · /crew-task Execute · /stop End` :
+      `  ${nameLabel(selected)}  ·  ${status}  ·  Model: ${member.model || 'Codex default'}${elapsed === null ? '' : `  ·  ${member.status === 'working' ? '' : 'last run '}${elapsed}s`}${activeChat ? ` · ${activeChat.title} (${activeChat.id})` : ''}${scroll ? '  ·  History / PgDn: newer' : ''}`, width), 'heading')];
   for (let i = 0; i < height; i++) {
     const message = visible[i] || row('');
     const body = paint(fit('  ' + message.text, contentWidth), message.tone);

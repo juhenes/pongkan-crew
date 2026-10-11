@@ -7,6 +7,51 @@ import { Crew, buildArgs } from '../src/crew.js';
 import { execute } from '../src/commands.js';
 import { readModelCatalog, validateModelChoice } from '../src/models.js';
 import { screen } from '../src/ui.js';
+import { EventEmitter } from 'node:events';
+import { PassThrough } from 'node:stream';
+
+test('inherited model display resolves Codex configuration and respects explicit choices', async () => {
+  const { readModelDefaults, modelLabel } = await import('../src/models.js');
+  const requests = [];
+  let killed = false;
+  let effectiveConfig = { model: 'project-model', model_reasoning_effort: 'high' };
+  const spawnProcess = () => {
+    const child = new EventEmitter();
+    child.stdout = new PassThrough(); child.stdin = new PassThrough(); child.stderr = new PassThrough();
+    child.kill = () => { killed = true; };
+    child.stdin.on('data', data => {
+      const request = JSON.parse(data.toString()); requests.push(request);
+      if (!request.id) return;
+      const result = request.method === 'initialize' ? {} : request.method === 'config/read' ?
+        { config: effectiveConfig } :
+        { data: [{ model: 'fallback-model', isDefault: true, defaultReasoningEffort: 'medium' }] };
+      child.stdout.write(JSON.stringify({ id: request.id, result }) + '\n');
+    });
+    return child;
+  };
+  const defaults = await readModelDefaults('C:/project', { spawnProcess });
+  assert.equal(defaults.model, 'project-model');
+  assert.match(modelLabel({}, defaults), /project-model.*inherited.*high/);
+  assert.match(modelLabel({ model: 'explicit-model', reasoningEffort: 'low' }, defaults), /^explicit-model.*low/);
+  assert.equal(requests.find(r => r.method === 'config/read').params.cwd, 'C:/project');
+  assert.equal(killed, true);
+  effectiveConfig = {};
+  assert.deepEqual(await readModelDefaults('C:/project', { spawnProcess }), { model: 'fallback-model', reasoningEffort: 'medium' });
+  assert.ok(requests.some(r => r.method === 'model/list'));
+});
+
+test('model resolution times out and stops the configuration process', async () => {
+  const { readModelDefaults } = await import('../src/models.js');
+  let killed = false;
+  const spawnProcess = () => {
+    const child = new EventEmitter();
+    child.stdout = new PassThrough(); child.stdin = new PassThrough(); child.stderr = new PassThrough();
+    child.kill = () => { killed = true; };
+    return child;
+  };
+  await assert.rejects(readModelDefaults('C:/project', { spawnProcess, timeoutMs: 10 }), /Unable to resolve/);
+  assert.equal(killed, true);
+});
 
 function setup(t) {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-models-'));

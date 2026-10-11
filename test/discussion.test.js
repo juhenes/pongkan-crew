@@ -12,6 +12,118 @@ function setup(t, runner) {
   t.after(() => rmSync(folder, { recursive: true, force: true }));
   return new Crew(folder, { runner });
 }
+
+test('chat hides redundant self labels while preserving references and saved replies', async t => {
+  const crew = setup(t, async (args, prompt, event) => {
+    event({ type: 'item.completed', item: { type: 'agent_message', text: 'Developer: Researcher: keep this reference.' } });
+  });
+  const discussion = crew.discussions.start('Discuss labels', 'developer');
+  await crew.queue.settled(discussion.taskIds.at(-1));
+  const group = screen(crew, 'developer', '', '', 120, 40, 0, null, { view: 'group' });
+  assert.doesNotMatch(group, /Developer: Researcher:/);
+  assert.match(group, /Researcher: keep this reference/);
+  assert.equal(discussion.messages.at(-1).text, 'Developer: Researcher: keep this reference.');
+  crew.member('developer').messages.push({ role: 'assistant', text: 'developer: I agree with Researcher.' });
+  const direct = screen(crew, 'developer', '', '', 120, 40);
+  assert.doesNotMatch(direct, /developer: I agree/);
+  assert.match(direct, /I agree with Researcher/);
+});
+
+test('ordinary Crew Chat follow-ups retain prior findings across restart', async t => {
+  const prompts = [];
+  const runner = async (args, prompt, event) => {
+    prompts.push(prompt);
+    event({ type: 'item.completed', item: { type: 'agent_message', text: 'Use the orange navigation layout.' } });
+  };
+  const crew = setup(t, runner);
+  const first = crew.discussions.start('Suggest a navigation layout', 'developer');
+  await crew.queue.settled(first.taskIds.at(-1));
+  const restored = new Crew(crew.folder, { runner });
+  const app = { crew: restored, selected: 'developer', view: 'group' };
+  execute(app, 'What are the tradeoffs?');
+  await restored.queue.settled(restored.discussions.current.taskIds.at(-1));
+  assert.match(prompts[1], /Suggest a navigation layout/);
+  assert.match(prompts[1], /Use the orange navigation layout/);
+  assert.match(prompts[1], /What are the tradeoffs/);
+  assert.equal(first.messages.length, 2);
+  await restored.close();
+});
+
+test('Crew Chat proceed creates a workflow with the discussed plan', async t => {
+  const crew = setup(t, async (args, prompt, event) => {
+    event({ type: 'item.completed', item: { type: 'agent_message', text: 'Use the orange navigation layout.' } });
+  });
+  const first = crew.discussions.start('Suggest a navigation layout', 'developer');
+  await crew.queue.settled(first.taskIds.at(-1));
+  crew.queue.pause();
+  const app = { crew, selected: 'developer', view: 'group' };
+  execute(app, 'Proceed with that.');
+  const flow = crew.state.workflows.at(-1);
+  assert.ok(flow);
+  assert.match(flow.text, /Proceed with that/);
+  assert.match(flow.text, /Use the orange navigation layout/);
+  assert.equal(app.view, 'chat');
+  assert.equal(app.selected, crew.leadName);
+});
+
+test('Crew Chat task commands include history and execution cannot interrupt a discussion', async t => {
+  const crew = setup(t, async () => {});
+  crew.queue.pause();
+  const discussion = crew.discussions.start('Implement orange navigation', 'developer');
+  const app = { crew, selected: 'developer', view: 'group' };
+  assert.throws(() => execute(app, 'Proceed with that'), /discussion is active/);
+  assert.equal(crew.state.workflows.length, 0);
+  crew.discussions.stop();
+  discussion.messages.push({ role: 'assistant', speaker: 'developer', text: 'Preserve keyboard navigation.' });
+  execute(app, '/task Implement that plan');
+  assert.match(crew.state.workflows.at(-1).text, /Preserve keyboard navigation/);
+});
+
+test('new in Crew Chat opens a blank conversation without clearing individual chats', async t => {
+  const crew = setup(t, async () => {});
+  crew.queue.pause();
+  const first = crew.discussions.start('Old proposal', 'developer');
+  const app = { crew, selected: 'developer', view: 'group' };
+  assert.throws(() => execute(app, '/new'), /discussion is active/);
+  crew.discussions.stop();
+  crew.member('developer').messages.push({ role: 'user', text: 'Private task' });
+  execute(app, '/new');
+  assert.equal(app.view, 'group');
+  assert.deepEqual(crew.discussions.current.messages, []);
+  assert.equal(crew.member('developer').messages[0].text, 'Private task');
+  assert.equal(first.messages[0].text, 'Old proposal');
+  const shown = screen(crew, 'developer', '', '', 120, 40, 0, null, { view: 'group' });
+  assert.doesNotMatch(shown, /Old proposal/);
+  execute(app, 'New topic');
+  assert.deepEqual(crew.discussions.current.messages.map(m => m.text), ['New topic']);
+  assert.deepEqual(new Crew(crew.folder).discussions.current.messages.map(m => m.text), ['New topic']);
+});
+
+test('crew-task requires saved discussion and uses it from any tab with an optional goal', async t => {
+  const crew = setup(t, async () => {});
+  crew.queue.pause();
+  const app = { crew, selected: 'developer', view: 'chat' };
+  assert.throws(() => execute(app, '/crew-task'), /Crew Chat/);
+  assert.equal(crew.state.workflows.length, 0);
+  const discussion = crew.discussions.start('Improve navigation', 'developer');
+  assert.throws(() => execute(app, '/crew-task'), /discussion is active/);
+  crew.discussions.stop();
+  discussion.messages.push({ role: 'assistant', speaker: 'developer', text: 'Use orange links with keyboard support.' });
+  execute(app, '/crew-task');
+  assert.match(crew.state.workflows.at(-1).text, /Implement the agreed plan/);
+  assert.match(crew.state.workflows.at(-1).text, /Use orange links with keyboard support/);
+  assert.equal(app.selected, crew.leadName);
+  assert.equal(app.view, 'chat');
+  app.view = 'activity';
+  execute(app, '/crew-task Only implement keyboard support');
+  assert.match(crew.state.workflows.at(-1).text, /^Only implement keyboard support/);
+  assert.match(crew.state.workflows.at(-1).text, /Use orange links/);
+  execute(app, '/task A separate goal');
+  assert.equal(crew.state.workflows.at(-1).text, 'A separate goal');
+  app.view = 'group';
+  execute(app, '/new');
+  assert.throws(() => execute(app, '/crew-task'), /Crew Chat/);
+});
 test('discussion takes two bounded rounds, shares replies, summarizes and persists read-only', async t => {
   const prompts = [];
   const crew = setup(t, async (args, prompt, event) => {

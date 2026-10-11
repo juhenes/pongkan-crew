@@ -6,6 +6,27 @@ import { join } from 'node:path';
 import { Crew } from '../src/crew.js';
 import { execute } from '../src/commands.js';
 
+test('individual follow-ups include saved context even when resuming a session', async t => {
+  const folder = mkdtempSync(join(tmpdir(), 'pongkan-context-resume-'));
+  const prompts = [];
+  const crew = new Crew(folder, { runner: async (args, prompt, event) => {
+    prompts.push(prompt);
+    event({ type: 'thread.started', thread_id: 'saved-session' });
+    event({ type: 'item.completed', item: { type: 'agent_message', text: 'Implement the orange navigation layout.' } });
+  } });
+  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  await crew.send('developer', 'Suggest a navigation layout');
+  await crew.send('developer', 'Proceed with that');
+  assert.match(prompts[1], /Suggest a navigation layout/);
+  assert.match(prompts[1], /Implement the orange navigation layout/);
+  assert.match(prompts[1], /Proceed with that/);
+  crew.member('developer').threadId = null;
+  crew.member('developer').messages.unshift({ role: 'user', text: 'Original requirement: retain keyboard navigation.' });
+  for (let index = 0; index < 25; index++) crew.member('developer').messages.push({ role: 'assistant', text: `Note ${index}` });
+  await crew.send('developer', 'Continue');
+  assert.match(prompts[2], /Original requirement: retain keyboard navigation/);
+});
+
 test('context optimization preserves user requirements, all sources, and reply boundaries without mutating history', async () => {
   const { optimizeContext } = await import('../src/context.js');
   const records = [

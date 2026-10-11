@@ -40,3 +40,9 @@ Choose an unused custom preset name and substitute your actual teammates. If the
 ## Invalid state
 
 Malformed JSON or an invalid explicit coordinator configuration is rejected rather than overwritten. Keep the original file and a private backup; do not delete state or guess changes to session IDs. Reports to maintainers should include the error and a synthetic reproduction, not the private state file. Follow [SECURITY.md](../SECURITY.md) if the report involves sensitive information.
+
+## Named conversations and workflow workspaces
+
+Existing version-1 state remains supported. Conversation and schedule collections default to empty; original member transcripts and Codex session IDs remain the default individual chats. Named chats use separate saved histories and session IDs. `/conversation default NAME` returns to original history, and `/conversation default group` opens the original shared chat and project-wide workflow feed.
+
+The workflow feed is derived from existing task records and needs no backfill. Named chats, worktree paths/branches, schedule claims, and steering instructions persist in `state.json`; explicit project memory is stored separately in `.pongkan-crew/project-memory.json`. Worktrees are retained and never automatically merged or removed. Legacy workflows keep their execution folder; only `--isolated` workflows use new worktrees. Interrupted work retains the existing explicit-recovery behavior.
