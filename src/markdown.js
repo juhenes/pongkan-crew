@@ -16,10 +16,16 @@ function graphemeWidth(char) {
     (code >= 0xf900 && code <= 0xfaff) || (code >= 0xfe10 && code <= 0xfe6f) ||
     (code >= 0xff01 && code <= 0xff60) || (code >= 0xffe0 && code <= 0xffe6) || code >= 0x20000) ? 2 : 1;
 }
-export function cellWidth(text) { return graphemes(clean(text)).reduce((sum, char) => sum + graphemeWidth(char), 0); }
+export function cellWidth(text) {
+  text = clean(text);
+  if (/^[\x20-\x7e]*$/.test(text)) return text.length;
+  return graphemes(text).reduce((sum, char) => sum + graphemeWidth(char), 0);
+}
 export function fitText(text, width) {
+  text = clean(text);
+  if (/^[\x20-\x7e]*$/.test(text)) return text.slice(0, width).padEnd(width);
   let result = '', cells = 0;
-  for (const char of graphemes(clean(text))) {
+  for (const char of graphemes(text)) {
     const size = graphemeWidth(char);
     if (cells + size > width) break;
     result += char; cells += size;
@@ -40,14 +46,15 @@ export function wrapText(text, width, preserve = false) {
       }
       output.push(line); continue;
     }
-    let line = '';
+    let line = '', lineWidth = 0;
     for (const word of raw.trim().split(/\s+/)) {
-      if (cellWidth(word) > width) {
+      const wordWidth = cellWidth(word);
+      if (wordWidth > width) {
         if (line) { output.push(line); line = ''; }
         const chunks = wrapText(word, width, true);
-        output.push(...chunks.slice(0, -1)); line = chunks.at(-1);
-      } else if (line && cellWidth(line + ' ' + word) > width) { output.push(line); line = word; }
-      else line += (line ? ' ' : '') + word;
+        output.push(...chunks.slice(0, -1)); line = chunks.at(-1); lineWidth = cellWidth(line);
+      } else if (line && lineWidth + 1 + wordWidth > width) { output.push(line); line = word; lineWidth = wordWidth; }
+      else { lineWidth += (line ? 1 : 0) + wordWidth; line += (line ? ' ' : '') + word; }
     }
     output.push(line);
   }
