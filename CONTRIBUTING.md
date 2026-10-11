@@ -20,6 +20,11 @@ node .\scripts\preview-display.js
 
 These checks run offline. Optional [live checks](README.md#development-checks) require Codex CLI and use your signed-in account.
 
+On Windows, `node scripts/check-terminal-input.js` checks wheel scrolling, Page Up/Down,
+prompt history, Home/End and Space in a real terminal using synthetic console events
+and a temporary project. It requires a working Codex login for app startup but sends
+no agent tasks. Physical touchpad gestures still need a manual check.
+
 ## Pull requests
 
 - Explain the problem and resulting behavior.

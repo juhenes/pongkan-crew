@@ -2,6 +2,8 @@
 import { resolve } from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
 import { PassThrough } from 'node:stream';
+import { StringDecoder } from 'node:string_decoder';
+import { isatty } from 'node:tty';
 
 import { Crew } from './crew.js';
 import { screen } from './ui.js';
@@ -10,7 +12,7 @@ import { acquireLock, checkRuntime } from './runtime.js';
 import { completions } from './controls.js';
 import { layoutInput, PromptHistory } from './input.js';
 import { MOUSE_ON, MOUSE_OFF, scrollView, terminalInput } from './scroll.js';
-import { enableWindowsMouse } from './windows-input.js';
+import { enableWindowsMouse, connectWindowsInput } from './windows-input.js';
 import { runWorker } from './scheduler.js';
 import { answerShortcut } from './answer-shortcut.js';
 import { TerminalRenderer, scheduleRender } from './terminal-renderer.js';
@@ -34,7 +36,7 @@ async function main() {
     else throw new Error(`Unknown or incomplete option: ${args[i]}\n${help}`);
   }
   if (once && !worker || [preview, doctor, worker].filter(Boolean).length > 1) throw new Error('Use one mode: --preview, --doctor, or --worker [--once].');
-  if (!preview && !doctor && !worker && (!process.stdin.isTTY || !process.stdout.isTTY)) throw new Error('Open this app in an interactive terminal, or use --preview.');
+  if (!preview && !doctor && !worker && (!isatty(0) || !process.stdout.isTTY)) throw new Error('Open this app in an interactive terminal, or use --preview.');
   const release = acquireLock(folder);
   process.once('exit', release);
   let crew;
@@ -44,6 +46,8 @@ async function main() {
   let input = [], cursor = 0, closing = false;
   const history = new PromptHistory();
   let restoreMouse = () => {};
+  let stopInput = () => {};
+  let usingStdin = false;
   if (preview) { console.log(screen(crew, app.selected, '', 'Preview — no agents running')); release(); return; }
   console.log('Checking Codex, login, folder access and saved state...');
   const diagnostics = await checkRuntime();
@@ -89,7 +93,8 @@ async function main() {
     closing = true;
     render.cancel();
     clearInterval(ticker);
-    process.stdin.setRawMode(false); process.stdin.pause();
+    stopInput();
+    if (usingStdin) { process.stdin.setRawMode(false); process.stdin.pause(); }
     restoreMouse();
     process.stdout.write(MOUSE_OFF + '\x1b[?25h\x1b[?1049l');
     try { await crew.close(); } finally { release(); }
@@ -100,19 +105,33 @@ async function main() {
     if (result?.then) void result.then(() => render()).catch(error => { app.notice = error.message; render(); });
   };
   process.stdout.write(MOUSE_OFF + '\x1b[?1049h');
-  process.stdin.setRawMode(true);
   try {
     restoreMouse = enableWindowsMouse();
-    process.stdout.write(MOUSE_ON);
   } catch (error) { app.notice = `Mouse unavailable: ${error.message}. Use PgUp/PgDn to scroll.`; }
   const keyboard = new PassThrough();
   keyboard.setEncoding('utf8');
   emitKeypressEvents(keyboard);
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', terminalInput(text => keyboard.write(text), amount => {
+  const consume = terminalInput(text => keyboard.write(text), amount => {
     scrollView(app, amount); render();
-  }));
-  process.stdin.resume();
+  });
+  const useStdin = () => {
+    usingStdin = true;
+    process.stdin.setRawMode(true);
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', consume);
+    process.stdin.resume();
+    process.stdout.write(MOUSE_ON);
+  };
+  if (process.platform === 'win32') {
+    const decoder = new StringDecoder('utf8');
+    stopInput = connectWindowsInput(chunk => consume(decoder.write(chunk)), useStdin,
+      () => process.stdout.write(MOUSE_ON), () => {
+        // The native reader disables VT input; restore it before using Node.
+        try { enableWindowsMouse(); } catch {}
+        app.notice = 'Native mouse input unavailable. Use PgUp/PgDn to scroll.';
+        render();
+      });
+  } else useStdin();
   keyboard.on('keypress', (str, key = {}) => {
     try {
       if (key.ctrl && key.name === 'c') { void app.quit(); return; }

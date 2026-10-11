@@ -4,8 +4,46 @@ import { fileURLToPath } from 'node:url';
 export function startWindowsInput(launch = spawn) {
   const child = launch('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-File',
     fileURLToPath(new URL('./windows-input.ps1', import.meta.url))],
-  { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+  { windowsHide: true, stdio: ['inherit', 'pipe', 'pipe'] });
   return child;
+}
+
+// Only one reader may own CONIN$: Node's stdin discards native mouse records.
+export function connectWindowsInput(consume, fallback, ready, failed, start = startWindowsInput) {
+  let child, stopped = false, active = false, didFallback = false, timer;
+  const fail = () => {
+    if (stopped || didFallback) return;
+    didFallback = true;
+    clearTimeout(timer);
+    child?.kill();
+    failed();
+    fallback();
+  };
+  try {
+    child = start();
+    child.once('error', fail);
+    child.once('exit', fail);
+    child.stderr.resume();
+    child.stdout.on('data', chunk => {
+      if (stopped || didFallback) return;
+      if (!active) {
+        if (chunk[0] !== 0) { fail(); return; }
+        active = true;
+        clearTimeout(timer);
+        ready();
+        chunk = chunk.subarray(1);
+      }
+      if (chunk.length) consume(chunk);
+    });
+    timer = setTimeout(fail, 10000);
+    timer.unref();
+  } catch { fail(); }
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    clearTimeout(timer);
+    if (!didFallback) child?.kill();
+  };
 }
 
 // Open the shared console directly: the helper's standard streams are pipes.

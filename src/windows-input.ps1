@@ -46,7 +46,7 @@ public static class PongkanInputReader {
         throw new System.ComponentModel.Win32Exception();
       if (selfTest) {
         string sample = "hello\r";
-        InputRecord[] records = new InputRecord[sample.Length + 7];
+        InputRecord[] records = new InputRecord[sample.Length + 15];
         records[0] = new InputRecord { type = 2, x = 11, y = 7, buttons = 120u << 16, flags = 4 };
         records[1] = new InputRecord { type = 2, x = 11, y = 7, buttons = unchecked((uint)-120) << 16, flags = 4 };
         records[2] = new InputRecord { type = 1, down = 1, repeat = 1, key = 9 };
@@ -54,8 +54,16 @@ public static class PongkanInputReader {
         records[4] = new InputRecord { type = 1, down = 1, repeat = 1, key = 38 };
         records[5] = new InputRecord { type = 1, down = 1, repeat = 1, key = 8 };
         records[6] = new InputRecord { type = 1, down = 0, repeat = 1, character = 'x' };
+        records[7] = new InputRecord { type = 1, down = 1, repeat = 1, key = 33 };
+        records[8] = new InputRecord { type = 1, down = 1, repeat = 1, key = 34 };
+        records[9] = new InputRecord { type = 1, down = 1, repeat = 1, key = 36 };
+        records[10] = new InputRecord { type = 1, down = 1, repeat = 1, key = 35 };
+        records[11] = new InputRecord { type = 1, down = 1, repeat = 1, key = 40 };
+        records[12] = new InputRecord { type = 1, down = 1, repeat = 1, key = 39, controls = 16 };
+        records[13] = new InputRecord { type = 1, down = 1, repeat = 1, key = 113, controls = 16 };
+        records[14] = new InputRecord { type = 1, down = 1, repeat = 1, key = 9, controls = 16 };
         for (int i = 0; i < sample.Length; i++)
-          records[i + 7] = new InputRecord { type = 1, down = 1, repeat = 1, character = sample[i] };
+          records[i + 15] = new InputRecord { type = 1, down = 1, repeat = 1, character = sample[i] };
         uint written;
         if (!WriteConsoleInputW(handle, records, (uint)records.Length, out written))
           throw new System.ComponentModel.Win32Exception();
@@ -99,6 +107,13 @@ public static class PongkanInputReader {
             case 112: keyText = "\x1bOP"; break;
             case 113: keyText = (record.controls & 16) != 0 ? "\x1b[1;2Q" : "\x1bOQ"; break;
           }
+          // Preserve modified navigation, including the Shift+Right answer shortcut.
+          int modifier = 1 + ((record.controls & 16) != 0 ? 1 : 0)
+            + ((record.controls & 3) != 0 ? 2 : 0) + ((record.controls & 12) != 0 ? 4 : 0);
+          if (modifier > 1 && record.key >= 35 && record.key <= 40)
+            keyText = "\x1b[1;" + modifier + keyText.Substring(keyText.Length - 1);
+          else if ((record.controls & 3) != 0 && keyText.Length == 1)
+            keyText = "\x1b" + keyText;
           for (int repeat = 0; repeat < Math.Max(1, (int)record.repeat); repeat++) text.Append(keyText);
         }
         char[] chars = text.ToString().ToCharArray();
