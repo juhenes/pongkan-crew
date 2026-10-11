@@ -4,7 +4,13 @@ import { renderMarkdown, wrapText, cellWidth } from '../src/markdown.js';
 
 const content = rows => rows.map(row => row.text).join('\n');
 test('workflow JSON displays numbered assignments and reviewer instead of serialized data', () => {
-  const plan = { steps: [{ member: 'developer', task: 'Build the app.' }, { member: 'reviewer', task: 'Check the app.' }], reviewer: 'reviewer' };
+  const plan = {
+    steps: [
+      { member: 'developer', task: 'Build the app.' },
+      { member: 'reviewer', task: 'Check the app.' },
+    ],
+    reviewer: 'reviewer',
+  };
   const output = content(renderMarkdown(JSON.stringify(plan), 60));
   assert.match(output, /1\. developer/);
   assert.match(output, /Build the app\./);
@@ -13,19 +19,28 @@ test('workflow JSON displays numbered assignments and reviewer instead of serial
 });
 
 test('handoff labels are separate headings even without blank lines', () => {
-  const rows = renderMarkdown('**Completed work:** Built app.\n**Files:** [README](<C:/project/README.md>)\n**Verification:** Passed.', 60, { folder: 'C:/project' });
+  const rows = renderMarkdown(
+    '**Completed work:** Built app.\n**Files:** [README](<C:/project/README.md>)\n**Verification:** Passed.',
+    60,
+    { folder: 'C:/project' },
+  );
   assert.ok(rows.some(row => row.tone === 'heading' && row.text === 'Files:'));
   assert.match(content(rows), /README \[1\]/);
 });
 test('responses render headings, emphasis and links without raw Markdown syntax', () => {
-  const output = content(renderMarkdown('# Codex workspace\n\n**Codex** is a [terminal tool](https://example.com/tools).', 65));
+  const output = content(
+    renderMarkdown('# Codex workspace\n\n**Codex** is a [terminal tool](https://example.com/tools).', 65),
+  );
   assert.match(output, /Codex workspace/);
   assert.match(output, /Codex is a terminal tool \[1\]/);
   assert.match(output, /\[1\] https:\/\/example.com\/tools/);
   assert.doesNotMatch(output, /\*\*|\]\(https|^# /m);
 });
 test('Markdown tables become readable entries without pipe separators or broken words', () => {
-  const rows = renderMarkdown('| Tool | Similarity |\n| --- | --- |\n| [Codex](https://example.com/codex) | A terminal interface for managing several coding agents. |\n| Pongkan Crew | Organizes teammate conversations and task queues. |', 54);
+  const rows = renderMarkdown(
+    '| Tool | Similarity |\n| --- | --- |\n| [Codex](https://example.com/codex) | A terminal interface for managing several coding agents. |\n| Pongkan Crew | Organizes teammate conversations and task queues. |',
+    54,
+  );
   const output = content(rows);
   assert.match(output, /Codex \[1\]/);
   assert.match(output, /Similarity: A terminal interface/);
@@ -50,7 +65,9 @@ test('rendered lines respect terminal cell widths for wide and combining charact
   assert.ok(rows.every(row => cellWidth(row.text) <= 22));
 });
 test('local project links use relative references and terminal controls are removed', () => {
-  const output = content(renderMarkdown('[README](<C:/project/README.md>)\x1b]0;unsafe\x07', 60, { folder: 'C:/project' }));
+  const output = content(
+    renderMarkdown('[README](<C:/project/README.md>)\x1b]0;unsafe\x07', 60, { folder: 'C:/project' }),
+  );
   assert.match(output, /\[1\] README.md/);
   assert.doesNotMatch(output, /\x1b|\x07/);
 });

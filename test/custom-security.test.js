@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, mkdirSync, symlinkSync, writeFileSync, readFileSync, linkSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync, readFileSync, linkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Crew } from '../src/crew.js';
@@ -28,7 +28,8 @@ test('custom preset creation, title and deletion persist without changing the ac
   assert.throws(() => execute(app, '/preset delete default'), /built-in/);
 });
 test('description assistance is queued read-only and does not automatically change roles', t => {
-  const crew = new Crew(setup(t)); crew.queue.pause();
+  const crew = new Crew(setup(t));
+  crew.queue.pause();
   const role = crew.member('developer').role;
   execute({ crew, selected: 'developer' }, '/preset improve developer Focus on accessible interfaces');
   const task = crew.state.tasks.at(-1);
@@ -38,16 +39,20 @@ test('description assistance is queued read-only and does not automatically chan
   assert.equal(crew.member('developer').role, role);
 });
 test('state directories cannot redirect writes or locks through junctions', t => {
-  const folder = setup(t), outside = setup(t);
+  const folder = setup(t),
+    outside = setup(t);
   symlinkSync(outside, join(folder, '.pongkan-crew'), 'junction');
   assert.throws(() => new Crew(folder), /Unsafe/);
   assert.throws(() => acquireLock(folder), /Unsafe/);
 });
 test('state writes reject hardlinked destinations without modifying external data', t => {
-  const folder = setup(t), outside = setup(t), crew = new Crew(folder);
+  const folder = setup(t),
+    outside = setup(t),
+    crew = new Crew(folder);
   const external = join(outside, 'important.json');
   writeFileSync(external, readFileSync(crew.file));
-  rmSync(crew.file); linkSync(external, crew.file);
+  rmSync(crew.file);
+  linkSync(external, crew.file);
   assert.throws(() => crew.save(), /Unsafe/);
   assert.equal(readFileSync(external, 'utf8'), JSON.stringify(crew.state, null, 2));
 });
@@ -57,7 +62,8 @@ test('help includes concrete model examples for all and named teammates', () => 
 });
 
 test('retrying description assistance preserves read-only access', t => {
-  const crew = new Crew(setup(t)); crew.queue.pause();
+  const crew = new Crew(setup(t));
+  crew.queue.pause();
   const task = crew.queue.enqueue('developer', 'Suggest instructions', { readOnly: true });
   task.status = 'completed';
   assert.equal(crew.queue.retry(task.id).readOnly, true);

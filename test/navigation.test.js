@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { cycle } from '../src/commands.js';
 
 test('teammate navigation includes Crew Chat in both directions and preserves selection there', () => {
-  const app = { crew: { state: { members: [{ name: 'chief' }, { name: 'developer' }] } }, selected: 'chief', view: 'chat' };
+  const app = {
+    crew: { state: { members: [{ name: 'chief' }, { name: 'developer' }] } },
+    selected: 'chief',
+    view: 'chat',
+  };
   cycle(app, 1);
   assert.equal(app.selected, 'developer');
   cycle(app, 1);

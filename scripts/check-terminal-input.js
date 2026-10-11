@@ -10,10 +10,15 @@ if (process.platform !== 'win32' || !isatty(0) || !process.stdout.isTTY)
 const folder = mkdtempSync(join(tmpdir(), 'pongkan-native-check-'));
 let output = '';
 const write = process.stdout.write.bind(process.stdout);
-process.stdout.write = (chunk, ...args) => { output += chunk; return write(chunk, ...args); };
+process.stdout.write = (chunk, ...args) => {
+  output += chunk;
+  return write(chunk, ...args);
+};
 process.argv = [process.argv[0], 'src/cli.js', '--folder', folder];
 const injector = join(folder, 'inject.ps1');
-writeFileSync(injector, `param([int]$Key = 0, [int]$Wheel = 0, [string]$Text = '')
+writeFileSync(
+  injector,
+  `param([int]$Key = 0, [int]$Wheel = 0, [string]$Text = '')
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -43,19 +48,26 @@ public class Inject {
 }
 '@
 [Inject]::Send($Key,$Wheel,$Text)
-`);
+`,
+);
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
-const inject = (...args) => execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', injector, ...args],
-  { windowsHide: true, stdio: ['inherit', 'pipe', 'pipe'], timeout: 10000 });
+const inject = (...args) =>
+  execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', injector, ...args], {
+    windowsHide: true,
+    stdio: ['inherit', 'pipe', 'pipe'],
+    timeout: 10000,
+  });
 async function check(args, pattern) {
-  output = ''; inject(...args);
-  for(let i=0;i<30 && !pattern.test(output);i++) await pause(100);
+  output = '';
+  inject(...args);
+  for (let i = 0; i < 30 && !pattern.test(output); i++) await pause(100);
   assert.match(output, pattern);
 }
 await import('../src/cli.js');
 try {
-  for(let i=0;i<150 && !output.includes('chief>');i++) await pause(100);
-  assert.match(output, /chief>/); await pause(1000);
+  for (let i = 0; i < 150 && !output.includes('chief>'); i++) await pause(100);
+  assert.match(output, /chief>/);
+  await pause(1000);
   await check(['-Text', '?'], /HELP \(1-11/);
   await check(['-Wheel', '-120'], /HELP \(4-14/);
   await check(['-Wheel', '120'], /HELP \(1-11/);
@@ -67,10 +79,16 @@ try {
   await check(['-Text', 'draft'], /chief> draft/);
   await check(['-Key', '38'], /chief> \/help scroll/);
   await check(['-Key', '40'], /chief> draft/);
-  inject('-Key', '36'); await pause(200);
+  inject('-Key', '36');
+  await pause(200);
   await check(['-Text', 'X'], /chief> Xdraft/);
-  inject('-Key', '35'); await pause(200);
+  inject('-Key', '35');
+  await pause(200);
   await check(['-Text', ' Y'], /chief> Xdraft Y/);
   write('\nNATIVE INPUT CHECK PASSED: wheel, PgUp/PgDn, Up/Down, Home/End, Space\n');
-} catch(error) { write('\nNATIVE INPUT CHECK FAILED: ' + error.message + '\n'); process.exitCode=1; }
-finally { inject('-Text', '\x03'); }
+} catch (error) {
+  write('\nNATIVE INPUT CHECK FAILED: ' + error.message + '\n');
+  process.exitCode = 1;
+} finally {
+  inject('-Text', '\x03');
+}

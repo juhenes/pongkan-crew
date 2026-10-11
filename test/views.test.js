@@ -18,15 +18,30 @@ function folder(t) {
 
 test('new Crew Chat replies and progress remain visible after a long older workflow', t => {
   const crew = new Crew(folder(t));
-  const discussion = { id: 'intro', createdAt: 200, status: 'working', messages: [
-    { role: 'user', speaker: 'you', text: 'Introduce yourselves.' },
-    { role: 'assistant', speaker: 'chief', text: 'Hello, I coordinate the crew.' },
-  ] };
+  const discussion = {
+    id: 'intro',
+    createdAt: 200,
+    status: 'working',
+    messages: [
+      { role: 'user', speaker: 'you', text: 'Introduce yourselves.' },
+      { role: 'assistant', speaker: 'chief', text: 'Hello, I coordinate the crew.' },
+    ],
+  };
   crew.state.discussions.push(discussion);
   crew.state.workflows.push({ id: 'older', lead: 'chief', text: 'Old README work', createdAt: 100 });
-  crew.state.tasks.push({ id: 'summary', workflowId: 'older', member: 'chief', kind: 'summary',
-    status: 'completed', text: 'Summarize old work', result: 'Historical summary. '.repeat(40), createdAt: 101 },
-  { id: 'intro-turn', discussionId: 'intro', member: 'developer', status: 'running' });
+  crew.state.tasks.push(
+    {
+      id: 'summary',
+      workflowId: 'older',
+      member: 'chief',
+      kind: 'summary',
+      status: 'completed',
+      text: 'Summarize old work',
+      result: 'Historical summary. '.repeat(40),
+      createdAt: 101,
+    },
+    { id: 'intro-turn', discussionId: 'intro', member: 'developer', status: 'running' },
+  );
   crew.member('developer').status = 'working';
   crew.member('developer').progress = { phase: 'thinking', channel: 'group' };
   const output = screen(crew, 'chief', '', '', 100, 30, 0, null, { view: 'group' });
@@ -36,8 +51,16 @@ test('new Crew Chat replies and progress remain visible after a long older workf
   discussion.status = 'completed';
   const finished = screen(crew, 'chief', '', '', 100, 30, 0, null, { view: 'group' });
   assert.match(finished, /Hello, I coordinate the crew/);
-  crew.state.tasks.push({ id: 'new-plan', workflowId: 'older', member: 'chief', kind: 'work',
-    status: 'completed', text: 'New work', result: 'New workflow reply', createdAt: 300 });
+  crew.state.tasks.push({
+    id: 'new-plan',
+    workflowId: 'older',
+    member: 'chief',
+    kind: 'work',
+    status: 'completed',
+    text: 'New work',
+    result: 'New workflow reply',
+    createdAt: 300,
+  });
   const later = screen(crew, 'chief', '', '', 100, 60, 0, null, { view: 'group' });
   assert.ok(later.indexOf('Hello, I coordinate the crew') < later.indexOf('New workflow reply'));
 });
@@ -46,10 +69,28 @@ test('Crew Chat shows full workflow replies and readable plans while Activity ke
   const crew = new Crew(folder(t));
   crew.state.workflows.push({ id: 'flow-chat', lead: 'chief', text: 'Build the page', createdAt: 1 });
   const plan = JSON.stringify({ steps: [{ member: 'developer', task: 'Build the page' }], reviewer: 'reviewer' });
-  crew.state.tasks.push({ id: 'plan-chat', workflowId: 'flow-chat', member: 'chief', kind: 'plan',
-    status: 'completed', text: 'PONGKAN_PLAN internal instructions', result: plan, createdAt: 2 },
-  { id: 'work-chat', workflowId: 'flow-chat', member: 'developer', kind: 'work', status: 'completed',
-    text: 'Internal assignment', result: 'Implemented the page. '.repeat(50) + 'FINAL RESPONSE MARKER', createdAt: 3 });
+  crew.state.tasks.push(
+    {
+      id: 'plan-chat',
+      workflowId: 'flow-chat',
+      member: 'chief',
+      kind: 'plan',
+      status: 'completed',
+      text: 'PONGKAN_PLAN internal instructions',
+      result: plan,
+      createdAt: 2,
+    },
+    {
+      id: 'work-chat',
+      workflowId: 'flow-chat',
+      member: 'developer',
+      kind: 'work',
+      status: 'completed',
+      text: 'Internal assignment',
+      result: 'Implemented the page. '.repeat(50) + 'FINAL RESPONSE MARKER',
+      createdAt: 3,
+    },
+  );
   const group = screen(crew, 'chief', '', '', 110, 100, 0, null, { view: 'group' });
   assert.match(group, /Proposed plan/);
   assert.match(group, /Developer/);
@@ -85,7 +126,11 @@ test('Git diff includes staged, unstaged and untracked files with spaces', async
   execFileSync('git', ['init', path], { windowsHide: true });
   writeFileSync(join(path, 'tracked.txt'), 'old\n');
   execFileSync('git', ['-C', path, 'add', 'tracked.txt']);
-  execFileSync('git', ['-C', path, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'initial'], { windowsHide: true });
+  execFileSync(
+    'git',
+    ['-C', path, '-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-m', 'initial'],
+    { windowsHide: true },
+  );
   writeFileSync(join(path, 'tracked.txt'), 'staged\n');
   execFileSync('git', ['-C', path, 'add', 'tracked.txt']);
   writeFileSync(join(path, 'tracked.txt'), 'working\n');
@@ -125,8 +170,10 @@ test('working conversations show animated activity and remove it when finished',
 
 test('chat renders readable Markdown at different terminal widths and safely adds color', t => {
   const crew = new Crew(folder(t));
-  crew.member('researcher').messages.push({ role: 'assistant', text:
-    '## Tools\n\n**Readable comparison**\n\n| Tool | Purpose |\n| --- | --- |\n| [Example](https://example.com) | A terminal interface for managing a crew of agents. |' });
+  crew.member('researcher').messages.push({
+    role: 'assistant',
+    text: '## Tools\n\n**Readable comparison**\n\n| Tool | Purpose |\n| --- | --- |\n| [Example](https://example.com) | A terminal interface for managing a crew of agents. |',
+  });
   for (const width of [45, 80, 140]) {
     const plain = screen(crew, 'researcher', '', '', width, 50);
     assert.doesNotMatch(plain, /\*\*|\]\(https|\| ---/);

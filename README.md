@@ -1,5 +1,7 @@
 # Pongkan Crew
 
+[![CI](https://github.com/juhenes/pongkan-crew/actions/workflows/ci.yml/badge.svg)](https://github.com/juhenes/pongkan-crew/actions/workflows/ci.yml)
+
 A terminal workspace for named Codex teammates. Chat, plan tasks, review changes, and follow your crew's work in one place.
 
 ![Pongkan Crew terminal interface](assets/images/pongkan-crew-cli.png)
@@ -48,20 +50,20 @@ To discuss first, open Crew Chat. Wait for the discussion to finish, then execut
 
 Enter commands separately. Ordinary messages in Crew Chat continue a read-only discussion. Follow implementation in individual Chat and Activity; Crew Chat also shows workflow updates.
 
-| Action | Command |
-| --- | --- |
-| Select a teammate | `/chat developer` |
-| Assign work directly | `/send developer GOAL` |
-| Follow progress | `/activity` |
-| Inspect changes | `/changes`, `/diff` |
-| Choose a specialist crew | `/preset list`, `/preset apply web` |
-| Start a separate conversation | `/conversation new developer TITLE` |
-| Run an isolated workflow | `/task --isolated GOAL` |
-| Read a GitHub issue or PR | `/github issue OWNER/REPO 12`, `/github pr OWNER/REPO 34` |
-| Implement a GitHub issue | `/github task OWNER/REPO 12 --isolated` |
-| Save future results as Markdown | `/markdown on` |
-| Stop selected work | `/stop` |
-| Search command help | `/help QUERY` |
+| Action                          | Command                                                   |
+| ------------------------------- | --------------------------------------------------------- |
+| Select a teammate               | `/chat developer`                                         |
+| Assign work directly            | `/send developer GOAL`                                    |
+| Follow progress                 | `/activity`                                               |
+| Inspect changes                 | `/changes`, `/diff`                                       |
+| Choose a specialist crew        | `/preset list`, `/preset apply web`                       |
+| Start a separate conversation   | `/conversation new developer TITLE`                       |
+| Run an isolated workflow        | `/task --isolated GOAL`                                   |
+| Read a GitHub issue or PR       | `/github issue OWNER/REPO 12`, `/github pr OWNER/REPO 34` |
+| Implement a GitHub issue        | `/github task OWNER/REPO 12 --isolated`                   |
+| Save future results as Markdown | `/markdown on`                                            |
+| Stop selected work              | `/stop`                                                   |
+| Search command help             | `/help QUERY`                                             |
 
 GitHub commands require an authenticated GitHub CLI (`gh`). They do not automatically commit, push, or open PRs. Isolated workflows start from committed `HEAD` and retain their branches and worktrees for review.
 
@@ -69,18 +71,18 @@ GitHub commands require an authenticated GitHub CLI (`gh`). They do not automati
 
 Rotating tips appear below the command/status line while the CLI is open.
 
-| Key | Action |
-| --- | --- |
-| Tab / Shift+Tab | Cycle teammates and Crew Chat |
-| F2 / Shift+F2 | Switch views |
-| Mouse wheel / PgUp / PgDn | Scroll responses, activity or panels |
-| Up / Down | Previous / next prompt; return to your new draft |
-| Shift+Right | Fill in the answer command for a waiting question; press again to cycle |
-| Enter | Send |
-| Esc | Close a panel or clear input |
-| ? / F1 | Open help |
-| Ctrl+K | Stop selected work |
-| Ctrl+C | Exit and stop work |
+| Key                       | Action                                                                  |
+| ------------------------- | ----------------------------------------------------------------------- |
+| Tab / Shift+Tab           | Cycle teammates and Crew Chat                                           |
+| F2 / Shift+F2             | Switch views                                                            |
+| Mouse wheel / PgUp / PgDn | Scroll responses, activity or panels                                    |
+| Up / Down                 | Previous / next prompt; return to your new draft                        |
+| Shift+Right               | Fill in the answer command for a waiting question; press again to cycle |
+| Enter                     | Send                                                                    |
+| Esc                       | Close a panel or clear input                                            |
+| ? / F1                    | Open help                                                               |
+| Ctrl+K                    | Stop selected work                                                      |
+| Ctrl+C                    | Exit and stop work                                                      |
 
 Mouse wheel scrolls responses, activity and panels while the input stays fixed. Up/Down previews submitted prompts and restores your new draft after the newest prompt. Stopping work does not undo file edits.
 
@@ -110,7 +112,7 @@ If Node or Codex is missing, install it and reopen the terminal. Run `codex logi
 
 [Command reference](docs/COMMANDS.md) / [Upgrading and recovery](docs/UPGRADING.md) / [Contributing](CONTRIBUTING.md) / [Security](SECURITY.md)
 
-Run `node --test` for tests and `node .\scripts\preview-display.js` for an offline preview.
+Run `node --test` for tests, `node .\scripts\preview-display.js` for an offline preview, `node .\scripts\check-syntax.js` for syntax validation, and `npm run lint` / `npm run format:check` for linting and code style. Continuous integration runs offline tests, syntax checks, linting, and formatting checks across Linux, macOS, and Windows runners on Node 22 and 24.
 
 ## License
 

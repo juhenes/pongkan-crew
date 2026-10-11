@@ -18,52 +18,52 @@ Plain text goes to the selected teammate in Chat or continues the shared read-on
 
 ## Chat, assignments, and discussions
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/chat [NAME]` | Open Chat and optionally select a teammate | `/chat chief` |
-| `/crew chat NAME` | Alias for selecting a teammate's Chat | `/crew chat developer` |
-| `/personality` | List chat styles and each teammate's current style | `/personality` |
-| `/personality [NAME\|all] STYLE` | Change the selected teammate, a named teammate, or the whole crew's chat tone | `/personality developer jokester` |
-| `/personality reset [NAME]` | Restore neutral style for a teammate or the selected teammate | `/personality reset` |
-| `/next` | Cycle forward through teammates and Crew Chat | `/next` |
-| `/prev` | Cycle backward through teammates and Crew Chat | `/prev` |
-| `/task TEXT` | Lead plans sequential assignments, independent review, and summary | `/task Add todo filters, verify them, and review the changes.` |
-| `/send NAME TEXT` | Queue a direct assignment without changing selection | `/send developer Fix the remaining count.` |
-| `/handoff NAME [TASK]` | Pass the selected teammate's latest assistant answer to another teammate | `/handoff reviewer Review the implementation against the requirements.` |
-| `/retry` | Resend the selected teammate's latest direct user message | `/retry` |
-| `/discuss TOPIC` | Start two read-only rounds with the crew, then a lead summary | `/discuss Plan keyboard navigation for our todo app. Do not edit files.` |
-| `/group` | Open the latest shared Crew Chat | `/group` |
-| `@NAME MESSAGE` | Request one read-only reply using the latest shared discussion | `@developer How will you preserve invalid stored data?` |
+| Command                          | Purpose                                                                       | Sample usage                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `/chat [NAME]`                   | Open Chat and optionally select a teammate                                    | `/chat chief`                                                            |
+| `/crew chat NAME`                | Alias for selecting a teammate's Chat                                         | `/crew chat developer`                                                   |
+| `/personality`                   | List chat styles and each teammate's current style                            | `/personality`                                                           |
+| `/personality [NAME\|all] STYLE` | Change the selected teammate, a named teammate, or the whole crew's chat tone | `/personality developer jokester`                                        |
+| `/personality reset [NAME]`      | Restore neutral style for a teammate or the selected teammate                 | `/personality reset`                                                     |
+| `/next`                          | Cycle forward through teammates and Crew Chat                                 | `/next`                                                                  |
+| `/prev`                          | Cycle backward through teammates and Crew Chat                                | `/prev`                                                                  |
+| `/task TEXT`                     | Lead plans sequential assignments, independent review, and summary            | `/task Add todo filters, verify them, and review the changes.`           |
+| `/send NAME TEXT`                | Queue a direct assignment without changing selection                          | `/send developer Fix the remaining count.`                               |
+| `/handoff NAME [TASK]`           | Pass the selected teammate's latest assistant answer to another teammate      | `/handoff reviewer Review the implementation against the requirements.`  |
+| `/retry`                         | Resend the selected teammate's latest direct user message                     | `/retry`                                                                 |
+| `/discuss TOPIC`                 | Start two read-only rounds with the crew, then a lead summary                 | `/discuss Plan keyboard navigation for our todo app. Do not edit files.` |
+| `/group`                         | Open the latest shared Crew Chat                                              | `/group`                                                                 |
+| `@NAME MESSAGE`                  | Request one read-only reply using the latest shared discussion                | `@developer How will you preserve invalid stored data?`                  |
 
 For ordered implementation and review, use `/task`; direct tasks are independent. Discussions and mentions are read-only. Crew Chat shows readable plans and full teammate responses with speaker labels. Activity shows workflow IDs, task status and handoff records; raw tasks remain available through `/queue show ID`. Handoffs and retries can trigger edits; inspect changes first.
 
 ## Conversations, isolated work, and automation
 
-| Command | Behavior |
-| --- | --- |
-| `/conversation new NAME TITLE` | New independent individual chat; running chats continue |
-| `/conversation new group TITLE` | New independent shared chat |
-| `/conversation list` | IDs, names, and archived conversations |
-| `/conversation open ID` | Select a saved chat with its own history/session |
-| `/conversation archive ID` | Keep history, hide from active selection; requires inactive work and paused linked schedules |
-| `/conversation restore ID` | Make an archived chat available again |
-| `/conversation default [NAME\|group]` | Return to original individual/shared history |
-| `/task --isolated GOAL` | Workflow in a fresh Git worktree with separate teammate sessions |
-| `/crew-task --isolated [GOAL]` | Same isolation, using the selected Crew Chat plan |
-| `/worktree list` | Retained branches, folders, and chat IDs |
-| `/worktree show WORKFLOW_ID` | Git status and tracked working changes |
-| `/memory show` | Editable memory file and saved decision IDs |
-| `/memory add TEXT` | Save a project decision; duplicate text is reused |
-| `/memory remove ID` | Remove a saved decision |
-| `/steer TASK_OR_WORKFLOW_ID TEXT` | Apply a correction at the next task boundary |
-| `/schedule add MINUTES NAME GOAL` | Recurring read-only task in a dedicated conversation |
-| `/schedule add MINUTES NAME --write GOAL` | Recurring task with that member's normal access |
-| `/schedule list` | Intervals, next runs, and enabled state |
-| `/schedule pause ID` / `/schedule resume ID` | Disable or enable automatic runs |
-| `/schedule run ID` | Dispatch now if the queue is unpaused and no prior run is pending |
-| `/github issue OWNER/REPO NUMBER` | Read an issue using authenticated `gh` |
-| `/github pr OWNER/REPO NUMBER` | Read a PR's title/body/status |
-| `/github task OWNER/REPO NUMBER [--isolated]` | Create local work from an issue; no GitHub writes |
+| Command                                       | Behavior                                                                                     |
+| --------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `/conversation new NAME TITLE`                | New independent individual chat; running chats continue                                      |
+| `/conversation new group TITLE`               | New independent shared chat                                                                  |
+| `/conversation list`                          | IDs, names, and archived conversations                                                       |
+| `/conversation open ID`                       | Select a saved chat with its own history/session                                             |
+| `/conversation archive ID`                    | Keep history, hide from active selection; requires inactive work and paused linked schedules |
+| `/conversation restore ID`                    | Make an archived chat available again                                                        |
+| `/conversation default [NAME\|group]`         | Return to original individual/shared history                                                 |
+| `/task --isolated GOAL`                       | Workflow in a fresh Git worktree with separate teammate sessions                             |
+| `/crew-task --isolated [GOAL]`                | Same isolation, using the selected Crew Chat plan                                            |
+| `/worktree list`                              | Retained branches, folders, and chat IDs                                                     |
+| `/worktree show WORKFLOW_ID`                  | Git status and tracked working changes                                                       |
+| `/memory show`                                | Editable memory file and saved decision IDs                                                  |
+| `/memory add TEXT`                            | Save a project decision; duplicate text is reused                                            |
+| `/memory remove ID`                           | Remove a saved decision                                                                      |
+| `/steer TASK_OR_WORKFLOW_ID TEXT`             | Apply a correction at the next task boundary                                                 |
+| `/schedule add MINUTES NAME GOAL`             | Recurring read-only task in a dedicated conversation                                         |
+| `/schedule add MINUTES NAME --write GOAL`     | Recurring task with that member's normal access                                              |
+| `/schedule list`                              | Intervals, next runs, and enabled state                                                      |
+| `/schedule pause ID` / `/schedule resume ID`  | Disable or enable automatic runs                                                             |
+| `/schedule run ID`                            | Dispatch now if the queue is unpaused and no prior run is pending                            |
+| `/github issue OWNER/REPO NUMBER`             | Read an issue using authenticated `gh`                                                       |
+| `/github pr OWNER/REPO NUMBER`                | Read a PR's title/body/status                                                                |
+| `/github task OWNER/REPO NUMBER [--isolated]` | Create local work from an issue; no GitHub writes                                            |
 
 Worktrees require a committed repository root and clean tracked files, start from `HEAD`, and do not copy untracked setup or dependencies. One writer runs per workspace; separate worktrees can run concurrently. Retain/review the branches and explicitly commit/merge with Git. `/workflow show ID` links teammate chats. The default Crew Chat aggregates workflow activity; named shared chats filter to their originating workflows. Named chats preserve context and task destinations when switching. `/new` opens a blank named chat; `/clear` applies only to legacy individual chats.
 
@@ -87,13 +87,13 @@ This works with default and custom crews. Introductions are read-only; the lead 
 
 ## Questions and autonomy
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/questions` | Show question mode and waiting questions | `/questions` |
-| `/questions list` | Show pending questions with task IDs and reply instructions | `/questions list` |
-| `/questions on` | Allow material clarification questions in future work turns; default | `/questions on` |
-| `/questions off` | Let AI decide routine choices within the task and report assumptions | `/questions off` |
-| `/answer TASK_ID TEXT` | Save your answer and continue the same waiting assignment | `/answer TASK_ID Use a compact list with inline editing.` |
+| Command                | Purpose                                                              | Sample usage                                              |
+| ---------------------- | -------------------------------------------------------------------- | --------------------------------------------------------- |
+| `/questions`           | Show question mode and waiting questions                             | `/questions`                                              |
+| `/questions list`      | Show pending questions with task IDs and reply instructions          | `/questions list`                                         |
+| `/questions on`        | Allow material clarification questions in future work turns; default | `/questions on`                                           |
+| `/questions off`       | Let AI decide routine choices within the task and report assumptions | `/questions off`                                          |
+| `/answer TASK_ID TEXT` | Save your answer and continue the same waiting assignment            | `/answer TASK_ID Use a compact list with inline editing.` |
 
 Question mode is saved per folder and affects future turns. Answer waiting tasks or cancel them with `/queue cancel TASK_ID`. Waiting blocks dependent work and that teammate's other tasks; independent teammates can continue. Answers queue when dispatch is paused. Discussions and lead planning do not use this question protocol.
 
@@ -101,71 +101,71 @@ Questions off does not bypass permissions. Teammates can use existing approvals 
 
 ## Stop and cancel
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/stop` | Stop selected teammate's active work; in Crew Chat, stop the discussion | `/stop` |
-| `/stop NAME` | Stop a named teammate's active task | `/stop developer` |
-| `/stop all` | Pause dispatch and cancel all queued, waiting, and running work | `/stop all` |
-| `/queue cancel TASK_ID` | Cancel a queued, waiting, or running task | `/queue cancel TASK_ID` |
-| `/workflow cancel WORKFLOW_ID` | Cancel a workflow and its remaining assignments | `/workflow cancel WORKFLOW_ID` |
-| `/quit` or `/exit` | Stop active work and exit the CLI | `/quit` |
+| Command                        | Purpose                                                                 | Sample usage                   |
+| ------------------------------ | ----------------------------------------------------------------------- | ------------------------------ |
+| `/stop`                        | Stop selected teammate's active work; in Crew Chat, stop the discussion | `/stop`                        |
+| `/stop NAME`                   | Stop a named teammate's active task                                     | `/stop developer`              |
+| `/stop all`                    | Pause dispatch and cancel all queued, waiting, and running work         | `/stop all`                    |
+| `/queue cancel TASK_ID`        | Cancel a queued, waiting, or running task                               | `/queue cancel TASK_ID`        |
+| `/workflow cancel WORKFLOW_ID` | Cancel a workflow and its remaining assignments                         | `/workflow cancel WORKFLOW_ID` |
+| `/quit` or `/exit`             | Stop active work and exit the CLI                                       | `/quit`                        |
 
 Stopping preserves edits. Canceling a workflow task cancels dependent work. Use `/queue cancel TASK_ID` for waiting tasks; `/stop NAME` targets active work. After `/stop all`, use `/queue resume` to restart dispatch.
 
 ## Tasks and workflow history
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/queue` or `/queue list` | List task IDs, statuses, and dispatch state | `/queue list` |
-| `/queue show TASK_ID` | Read prompt, result, error, dependency, and timing | `/queue show TASK_ID` |
-| `/queue pause` | Stop new dispatch while active work continues | `/queue pause` |
-| `/queue resume` | Resume dispatch of eligible queued tasks | `/queue resume` |
-| `/queue move TASK_ID POSITION` | Move a queued task to a one-based queue position | `/queue move TASK_ID 1` |
-| `/queue retry TASK_ID` | Create a retry of a finished standalone task | `/queue retry TASK_ID` |
-| `/workflow` or `/workflow list` | List coordinated workflows | `/workflow list` |
-| `/workflow show WORKFLOW_ID` | Inspect goal, assignments, statuses, summary, and error | `/workflow show WORKFLOW_ID` |
-| `/workflow retry WORKFLOW_ID` | Start a new attempt at a finished/interrupted workflow | `/workflow retry WORKFLOW_ID` |
+| Command                         | Purpose                                                 | Sample usage                  |
+| ------------------------------- | ------------------------------------------------------- | ----------------------------- |
+| `/queue` or `/queue list`       | List task IDs, statuses, and dispatch state             | `/queue list`                 |
+| `/queue show TASK_ID`           | Read prompt, result, error, dependency, and timing      | `/queue show TASK_ID`         |
+| `/queue pause`                  | Stop new dispatch while active work continues           | `/queue pause`                |
+| `/queue resume`                 | Resume dispatch of eligible queued tasks                | `/queue resume`               |
+| `/queue move TASK_ID POSITION`  | Move a queued task to a one-based queue position        | `/queue move TASK_ID 1`       |
+| `/queue retry TASK_ID`          | Create a retry of a finished standalone task            | `/queue retry TASK_ID`        |
+| `/workflow` or `/workflow list` | List coordinated workflows                              | `/workflow list`              |
+| `/workflow show WORKFLOW_ID`    | Inspect goal, assignments, statuses, summary, and error | `/workflow show WORKFLOW_ID`  |
+| `/workflow retry WORKFLOW_ID`   | Start a new attempt at a finished/interrupted workflow  | `/workflow retry WORKFLOW_ID` |
 
 Moving tasks respects dependencies and the single-writer rule. Retry workflows with `/workflow retry`; restart discussions with `/discuss` or a mention. Retries may repeat edits. After restart, dispatch is paused, running tasks are interrupted, and unfinished workflows need explicit retry. Direct waiting questions survive. A completed workflow means turns finished; read the review and summary to assess delivery.
 
 ## Views, progress, and changes
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/activity` or `/act` | Open the team's live activity feed | `/activity` |
-| `/switch` | Cycle Chat → Crew Chat → Activity | `/switch` |
-| `/switch prev` | Cycle views backward | `/switch prev` |
-| `/switch chat` | Select individual Chat view | `/switch chat` |
-| `/switch group` | Select Crew Chat view | `/switch group` |
-| `/switch activity` | Select Activity view | `/switch activity` |
-| `/status` | Show preset, lead/reviewer, question mode, dispatch, and member status | `/status` |
-| `/progress [NAME]` | Inspect current action, elapsed time, files, and errors | `/progress developer` |
-| `/changes` | List captured changed files from the latest writer task | `/changes` |
-| `/diff` or `/diff last` | View latest writer snapshot; bare `/diff` falls back to Git if no snapshot exists | `/diff last` |
-| `/diff TASK_ID` | View a particular task's writer snapshot | `/diff TASK_ID` |
-| `/diff git` | View staged, unstaged, and untracked text changes using Git | `/diff git` |
-| `/folder` | Show the target project folder and state-file location | `/folder` |
-| `/doctor` | Check Codex availability and login | `/doctor` |
-| `/close` | Close an overlay panel | `/close` |
+| Command                 | Purpose                                                                           | Sample usage          |
+| ----------------------- | --------------------------------------------------------------------------------- | --------------------- |
+| `/activity` or `/act`   | Open the team's live activity feed                                                | `/activity`           |
+| `/switch`               | Cycle Chat → Crew Chat → Activity                                                 | `/switch`             |
+| `/switch prev`          | Cycle views backward                                                              | `/switch prev`        |
+| `/switch chat`          | Select individual Chat view                                                       | `/switch chat`        |
+| `/switch group`         | Select Crew Chat view                                                             | `/switch group`       |
+| `/switch activity`      | Select Activity view                                                              | `/switch activity`    |
+| `/status`               | Show preset, lead/reviewer, question mode, dispatch, and member status            | `/status`             |
+| `/progress [NAME]`      | Inspect current action, elapsed time, files, and errors                           | `/progress developer` |
+| `/changes`              | List captured changed files from the latest writer task                           | `/changes`            |
+| `/diff` or `/diff last` | View latest writer snapshot; bare `/diff` falls back to Git if no snapshot exists | `/diff last`          |
+| `/diff TASK_ID`         | View a particular task's writer snapshot                                          | `/diff TASK_ID`       |
+| `/diff git`             | View staged, unstaged, and untracked text changes using Git                       | `/diff git`           |
+| `/folder`               | Show the target project folder and state-file location                            | `/folder`             |
+| `/doctor`               | Check Codex availability and login                                                | `/doctor`             |
+| `/close`                | Close an overlay panel                                                            | `/close`              |
 
 Views keep work running. Diffs are bounded and read-only; snapshots work without Git. Activity shows reported events, not private reasoning or continuous subprocess output.
 
 ## Crew members and role catalog
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/crew list` | List current teammates, roles, and access | `/crew list` |
-| `/crew info [NAME]` | Inspect role, access, model, status, and direct session | `/crew info developer` |
-| `/roles list [QUERY]` | Browse or filter reusable roles | `/roles list engineering` |
-| `/roles show ROLE` | Read a catalog role's responsibilities and default access | `/roles show frontend-dev` |
-| `/crew add NAME [ROLE_TEXT]` | Add a read-only teammate with optional custom instructions | `/crew add designer Review layouts and accessibility.` |
-| `/crew add NAME --role ROLE` | Add a catalog specialist with its default access | `/crew add frontend --role frontend-dev` |
-| `/crew role NAME ROLE_TEXT` | Replace role instructions while keeping access | `/crew role designer Focus on keyboard navigation.` |
-| `/crew role NAME --role ROLE` | Apply catalog instructions and default access | `/crew role designer --role ui-ux-designer` |
-| `/crew access NAME read` | Set future tasks to read-only access | `/crew access designer read` |
-| `/crew access NAME write` | Allow future implementation tasks to write in the project | `/crew access designer write` |
-| `/crew rename NAME NEWNAME` | Rename a teammate; preserve lead/reviewer routing across restarts | `/crew rename chief boss` |
-| `/crew remove NAME` | Archive and remove a non-coordinator; reject extra arguments | `/crew remove artist` |
+| Command                       | Purpose                                                           | Sample usage                                           |
+| ----------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| `/crew list`                  | List current teammates, roles, and access                         | `/crew list`                                           |
+| `/crew info [NAME]`           | Inspect role, access, model, status, and direct session           | `/crew info developer`                                 |
+| `/roles list [QUERY]`         | Browse or filter reusable roles                                   | `/roles list engineering`                              |
+| `/roles show ROLE`            | Read a catalog role's responsibilities and default access         | `/roles show frontend-dev`                             |
+| `/crew add NAME [ROLE_TEXT]`  | Add a read-only teammate with optional custom instructions        | `/crew add designer Review layouts and accessibility.` |
+| `/crew add NAME --role ROLE`  | Add a catalog specialist with its default access                  | `/crew add frontend --role frontend-dev`               |
+| `/crew role NAME ROLE_TEXT`   | Replace role instructions while keeping access                    | `/crew role designer Focus on keyboard navigation.`    |
+| `/crew role NAME --role ROLE` | Apply catalog instructions and default access                     | `/crew role designer --role ui-ux-designer`            |
+| `/crew access NAME read`      | Set future tasks to read-only access                              | `/crew access designer read`                           |
+| `/crew access NAME write`     | Allow future implementation tasks to write in the project         | `/crew access designer write`                          |
+| `/crew rename NAME NEWNAME`   | Rename a teammate; preserve lead/reviewer routing across restarts | `/crew rename chief boss`                              |
+| `/crew remove NAME`           | Archive and remove a non-coordinator; reject extra arguments      | `/crew remove artist`                                  |
 
 Finish/cancel active workflows and affected tasks before changing members. The reviewer stays read-only; coordination members and the last teammate cannot be removed. Writer access does not grant command approvals, and discussions remain read-only.
 
@@ -179,17 +179,17 @@ In Chat and Crew Chat, messages start directly below the speaker's name; blank l
 
 ## Presets
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/preset list` | List built-in and saved teams | `/preset list` |
-| `/preset show NAME` | Preview members, instructions, access, and coordination | `/preset show web` |
-| `/preset apply NAME` | Archive current crew and create fresh preset sessions | `/preset apply default` |
-| `/preset save NAME [LEAD REVIEWER]` | Save current roles/access as a custom preset | `/preset save my-team chief reviewer` |
-| `/preset create NAME [LEAD REVIEWER]` | Capture the current roster as a new custom preset; reject existing names | `/preset create studio chief reviewer` |
-| `/preset title NAME TEXT` | Set a custom preset display title (up to 200 characters) | `/preset title studio Accessible design studio` |
-| `/preset improve MEMBER [GOALS]` | Queue read-only Codex suggestions for role skills and responsibilities; apply suggestions manually | `/preset improve developer Focus on accessible interfaces and testing` |
-| `/preset delete NAME` | Delete only a custom preset definition; preserve teammates, conversations, archives and files | `/preset delete studio` |
-| `/preset restore ARCHIVE_ID` | Restore an archived complete crew | `/preset restore ARCHIVE_ID` |
+| Command                               | Purpose                                                                                            | Sample usage                                                           |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `/preset list`                        | List built-in and saved teams                                                                      | `/preset list`                                                         |
+| `/preset show NAME`                   | Preview members, instructions, access, and coordination                                            | `/preset show web`                                                     |
+| `/preset apply NAME`                  | Archive current crew and create fresh preset sessions                                              | `/preset apply default`                                                |
+| `/preset save NAME [LEAD REVIEWER]`   | Save current roles/access as a custom preset                                                       | `/preset save my-team chief reviewer`                                  |
+| `/preset create NAME [LEAD REVIEWER]` | Capture the current roster as a new custom preset; reject existing names                           | `/preset create studio chief reviewer`                                 |
+| `/preset title NAME TEXT`             | Set a custom preset display title (up to 200 characters)                                           | `/preset title studio Accessible design studio`                        |
+| `/preset improve MEMBER [GOALS]`      | Queue read-only Codex suggestions for role skills and responsibilities; apply suggestions manually | `/preset improve developer Focus on accessible interfaces and testing` |
+| `/preset delete NAME`                 | Delete only a custom preset definition; preserve teammates, conversations, archives and files      | `/preset delete studio`                                                |
+| `/preset restore ARCHIVE_ID`          | Restore an archived complete crew                                                                  | `/preset restore ARCHIVE_ID`                                           |
 
 Built-ins: `default`, `web`, `mobile`, `social`, `content`. Finish/cancel outstanding work before applying or restoring. Applying preserves files and task history but starts fresh conversations; `/undo` restores the prior crew. Saving does not replace the crew or overwrite built-ins.
 
@@ -217,27 +217,27 @@ To change the saved team, customize the current crew and run `/preset save studi
 
 ## Conversations and recovery
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/clear` | Archive and clear selected transcript, retaining Codex session memory | `/clear` |
-| `/new` | Archive and clear selected transcript and start a fresh Codex session | `/new` |
-| `/new-all` | Open fresh conversations for every teammate and Crew Chat; preserve previous history. Finish or stop active work first. | `/new-all` |
-| `/archives` | List recoverable conversation/crew snapshots | `/archives` |
-| `/archives restore ARCHIVE_ID [NAME]` | Restore a conversation as a teammate; choose a new name for a copy | `/archives restore ARCHIVE_ID recovered-dev` |
-| `/undo` | Restore latest undoable conversation or crew change | `/undo` |
+| Command                               | Purpose                                                                                                                 | Sample usage                                 |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `/clear`                              | Archive and clear selected transcript, retaining Codex session memory                                                   | `/clear`                                     |
+| `/new`                                | Archive and clear selected transcript and start a fresh Codex session                                                   | `/new`                                       |
+| `/new-all`                            | Open fresh conversations for every teammate and Crew Chat; preserve previous history. Finish or stop active work first. | `/new-all`                                   |
+| `/archives`                           | List recoverable conversation/crew snapshots                                                                            | `/archives`                                  |
+| `/archives restore ARCHIVE_ID [NAME]` | Restore a conversation as a teammate; choose a new name for a copy                                                      | `/archives restore ARCHIVE_ID recovered-dev` |
+| `/undo`                               | Restore latest undoable conversation or crew change                                                                     | `/undo`                                      |
 
 Recovery restores conversations/settings, not project files. Stop/cancel relevant work first. `/preset apply default` resets all conversations to the default crew. Keep `.pongkan-crew/state.json` to preserve history.
 
 ## Model settings
 
-| Command | Purpose | Sample usage |
-| --- | --- | --- |
-| `/model [NAME]` | Inspect selected/named teammate's requested model and live status | `/model developer` |
-| `/model list` | Browse spaced model entries, supported efforts, and copyable commands for all teammates or the selected teammate | `/model list` |
-| `/model set NAME MODEL_ID [EFFORT]` | Choose model and optional effort for future tasks | `/model set developer MODEL_ID medium` |
-| `/model set all MODEL_ID [EFFORT]` | Set model for all teammates | `/model set all MODEL_ID` |
-| `/model reset [NAME]` | Remove overrides for selected/named teammate | `/model reset developer` |
-| `/model reset all` | Restore inherited Codex defaults for everyone | `/model reset all` |
+| Command                             | Purpose                                                                                                          | Sample usage                           |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `/model [NAME]`                     | Inspect selected/named teammate's requested model and live status                                                | `/model developer`                     |
+| `/model list`                       | Browse spaced model entries, supported efforts, and copyable commands for all teammates or the selected teammate | `/model list`                          |
+| `/model set NAME MODEL_ID [EFFORT]` | Choose model and optional effort for future tasks                                                                | `/model set developer MODEL_ID medium` |
+| `/model set all MODEL_ID [EFFORT]`  | Set model for all teammates                                                                                      | `/model set all MODEL_ID`              |
+| `/model reset [NAME]`               | Remove overrides for selected/named teammate                                                                     | `/model reset developer`               |
+| `/model reset all`                  | Restore inherited Codex defaults for everyone                                                                    | `/model reset all`                     |
 
 The model panel shows a blank line between choices and actual commands for each cached model, using your selected teammate's name. Examples use a supported effort (medium when available), or omit effort when none is listed. It also shows commands to reset one teammate or everyone.
 
@@ -257,25 +257,25 @@ Choose IDs and effort levels from `/model list`; cached entries may be unavailab
 
 ## Help and keyboard shortcuts
 
-| Command or key | Purpose | Sample usage |
-| --- | --- | --- |
-| `/help`, `?`, or F1 | Open help | `/help` |
-| `/help QUERY` | Search command help | `/help questions` |
-| Enter | Send complete input | Paste one `/task ...` prompt, then Enter |
-| Tab / Shift+Tab | Cycle teammates and Crew Chat; complete command/mention input | Type `/chat dev`, then Tab |
-| F2 / Shift+F2 | Cycle views forward/backward | Chat → Crew Chat → Activity |
-| Escape | Close panel, return from group/activity to Chat, or clear Chat input | Press Esc |
-| Up / Down | Preview previous / next submitted prompt; return to the new draft | Press Up to recall a prompt, then Down to restore the draft |
-| PgUp / PgDn | Scroll history or an open panel | Press PgUp while work runs |
-| Left / Right | Move input cursor | Edit a word in a prompt |
-| Home / End | Move to beginning/end of complete input | Press Home |
-| Backspace / Delete | Remove preceding/following character | Correct input before sending |
-| Ctrl+U | Clear input | Start the prompt again |
-| Ctrl+W | Delete preceding word | Remove the last word |
-| Ctrl+P / Ctrl+N | Previous/next submitted input | Recall a previous command |
-| Ctrl+K | Invoke `/stop` in the current view | Stop selected work or discussion |
-| Ctrl+L | Redraw screen | Refresh after resizing |
-| Ctrl+C | Stop work and exit | Close the CLI |
+| Command or key      | Purpose                                                              | Sample usage                                                |
+| ------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------- |
+| `/help`, `?`, or F1 | Open help                                                            | `/help`                                                     |
+| `/help QUERY`       | Search command help                                                  | `/help questions`                                           |
+| Enter               | Send complete input                                                  | Paste one `/task ...` prompt, then Enter                    |
+| Tab / Shift+Tab     | Cycle teammates and Crew Chat; complete command/mention input        | Type `/chat dev`, then Tab                                  |
+| F2 / Shift+F2       | Cycle views forward/backward                                         | Chat → Crew Chat → Activity                                 |
+| Escape              | Close panel, return from group/activity to Chat, or clear Chat input | Press Esc                                                   |
+| Up / Down           | Preview previous / next submitted prompt; return to the new draft    | Press Up to recall a prompt, then Down to restore the draft |
+| PgUp / PgDn         | Scroll history or an open panel                                      | Press PgUp while work runs                                  |
+| Left / Right        | Move input cursor                                                    | Edit a word in a prompt                                     |
+| Home / End          | Move to beginning/end of complete input                              | Press Home                                                  |
+| Backspace / Delete  | Remove preceding/following character                                 | Correct input before sending                                |
+| Ctrl+U              | Clear input                                                          | Start the prompt again                                      |
+| Ctrl+W              | Delete preceding word                                                | Remove the last word                                        |
+| Ctrl+P / Ctrl+N     | Previous/next submitted input                                        | Recall a previous command                                   |
+| Ctrl+K              | Invoke `/stop` in the current view                                   | Stop selected work or discussion                            |
+| Ctrl+L              | Redraw screen                                                        | Refresh after resizing                                      |
+| Ctrl+C              | Stop work and exit                                                   | Close the CLI                                               |
 
 Mouse wheel scrolls responses, activity and panels while the composer stays fixed. PgUp/PgDn also scroll content. Slash-command and mention completion take priority over Tab navigation when input begins with `/` or `@`.
 
@@ -283,14 +283,14 @@ Mouse wheel scrolls responses, activity and panels while the composer stays fixe
 
 Run these in PowerShell or Command Prompt, **outside the crew input**.
 
-| Command | Purpose |
-| --- | --- |
-| `node .\src\cli.js` | Launch for the current folder from the Pongkan Crew repository |
-| `node .\src\cli.js --folder ..\todo-app` | Launch from the tool repository targeting the sibling website |
-| `node ..\pongkan-crew\src\cli.js --folder .` | Launch from `todo-app`, targeting that folder |
-| `node .\src\cli.js --doctor --folder ..\todo-app` | Run startup diagnostics and exit |
+| Command                                            | Purpose                                                               |
+| -------------------------------------------------- | --------------------------------------------------------------------- |
+| `node .\src\cli.js`                                | Launch for the current folder from the Pongkan Crew repository        |
+| `node .\src\cli.js --folder ..\todo-app`           | Launch from the tool repository targeting the sibling website         |
+| `node ..\pongkan-crew\src\cli.js --folder .`       | Launch from `todo-app`, targeting that folder                         |
+| `node .\src\cli.js --doctor --folder ..\todo-app`  | Run startup diagnostics and exit                                      |
 | `node .\src\cli.js --preview --folder ..\todo-app` | Render once without Codex requests; loads/saves state and uses a lock |
-| `node .\src\cli.js --help` | Print CLI usage and command help; `-h` is an alias |
+| `node .\src\cli.js --help`                         | Print CLI usage and command help; `-h` is an alias                    |
 
 The target defaults to the current directory; quote paths with spaces and confirm with `/folder`. Only one instance can target a folder. Run npm/npx in a terminal, not crew input. For a complete example, see the [todo walkthrough](TODO_WEBSITE_WALKTHROUGH.md).
 

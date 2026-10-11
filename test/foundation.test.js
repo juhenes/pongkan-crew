@@ -18,7 +18,8 @@ test('exclusive folder lock rejects second launch and releases cleanly', t => {
   const folder = setup(t);
   const release = acquireLock(folder);
   assert.throws(() => acquireLock(folder), /already open/);
-  release(); release();
+  release();
+  release();
   acquireLock(folder)();
 });
 test('CLI recovers a dead process lock without changing conversations', t => {
@@ -34,7 +35,10 @@ test('CLI recovers a dead process lock without changing conversations', t => {
   const lock = join(folder, '.pongkan-crew', 'app.lock');
   writeFileSync(lock, JSON.stringify({ pid, token: 'old-instance' }));
   const cli = fileURLToPath(new URL('../src/cli.js', import.meta.url));
-  const result = spawnSync(process.execPath, [cli, '--folder', folder, '--preview'], { encoding: 'utf8', timeout: 5000 });
+  const result = spawnSync(process.execPath, [cli, '--folder', folder, '--preview'], {
+    encoding: 'utf8',
+    timeout: 5000,
+  });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Preview/);
   assert.equal(readFileSync(crew.file, 'utf8'), before);
@@ -47,7 +51,9 @@ test('incomplete locks and inaccessible processes remain protected', t => {
   const lock = join(folder, '.pongkan-crew', 'app.lock');
   for (const content of ['{', '{}', JSON.stringify({ pid: process.pid, token: 'protected' })]) {
     writeFileSync(lock, content);
-    t.mock.method(process, 'kill', () => { throw Object.assign(new Error('Access denied'), { code: 'EPERM' }); });
+    t.mock.method(process, 'kill', () => {
+      throw Object.assign(new Error('Access denied'), { code: 'EPERM' });
+    });
     assert.throws(() => acquireLock(folder), /already open/);
     assert.equal(readFileSync(lock, 'utf8'), content);
     t.mock.restoreAll();
@@ -90,29 +96,44 @@ test('simultaneous launches recover a stale lock with only one owner', { timeout
   `;
   const children = [];
   t.after(() => children.forEach(child => child.kill()));
-  const results = await Promise.all(Array.from({ length: 4 }, () => new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, ['--input-type=module', '-e', script, folder], { windowsHide: true });
-    children.push(child);
-    let output = '', errors = '';
-    child.stderr.on('data', chunk => { errors += chunk; });
-    child.stdout.on('data', chunk => {
-      output += chunk;
-      if (output.includes('\n')) resolve(output.trim());
-    });
-    child.once('error', reject);
-    child.once('exit', code => { if (!output.includes('\n')) reject(new Error(errors || `Exited ${code}`)); });
-  })));
+  const results = await Promise.all(
+    Array.from(
+      { length: 4 },
+      () =>
+        new Promise((resolve, reject) => {
+          const child = spawn(process.execPath, ['--input-type=module', '-e', script, folder], { windowsHide: true });
+          children.push(child);
+          let output = '',
+            errors = '';
+          child.stderr.on('data', chunk => {
+            errors += chunk;
+          });
+          child.stdout.on('data', chunk => {
+            output += chunk;
+            if (output.includes('\n')) resolve(output.trim());
+          });
+          child.once('error', reject);
+          child.once('exit', code => {
+            if (!output.includes('\n')) reject(new Error(errors || `Exited ${code}`));
+          });
+        }),
+    ),
+  );
   assert.equal(results.filter(result => result === 'acquired').length, 1, results.join('\n'));
   for (const result of results.filter(result => result !== 'acquired')) {
     assert.match(result, /already open|recovery is already in progress/);
   }
-  const exited = children.map(child => child.exitCode !== null ? Promise.resolve() : new Promise(resolve => child.once('exit', resolve)));
+  const exited = children.map(child =>
+    child.exitCode !== null ? Promise.resolve() : new Promise(resolve => child.once('exit', resolve)),
+  );
   children[results.indexOf('acquired')].stdin.end('release');
   await Promise.all(exited);
   assert.equal(existsSync(lock), false);
 });
 test('startup diagnostics classify absent Codex and absent login', async () => {
-  const missing = await checkRuntime(async () => { throw new Error('ENOENT'); });
+  const missing = await checkRuntime(async () => {
+    throw new Error('ENOENT');
+  });
   assert.equal(missing.ok, false);
   assert.match(missing.lines.join('\n'), /Codex.*unavailable/);
   const auth = await checkRuntime(async args => {
@@ -160,7 +181,9 @@ test('undo restores only affected teammate and preserves later messages elsewher
 
 test('invalid task references are rejected without overwriting saved state', t => {
   const crew = new Crew(setup(t));
-  crew.state.tasks = [{ id: '12345678', member: 'missing', text: 'work', status: 'queued', createdAt: Date.now(), kind: 'message' }];
+  crew.state.tasks = [
+    { id: '12345678', member: 'missing', text: 'work', status: 'queued', createdAt: Date.now(), kind: 'message' },
+  ];
   crew.save();
   const before = readFileSync(crew.file, 'utf8');
   assert.throws(() => new Crew(crew.folder), /Invalid crew state/);
@@ -172,10 +195,15 @@ test('a second CLI process cannot enter a locked folder', t => {
   const release = acquireLock(folder);
   try {
     const cli = fileURLToPath(new URL('../src/cli.js', import.meta.url));
-    const result = spawnSync(process.execPath, [cli, '--folder', folder, '--preview'], { encoding: 'utf8', timeout: 5000 });
+    const result = spawnSync(process.execPath, [cli, '--folder', folder, '--preview'], {
+      encoding: 'utf8',
+      timeout: 5000,
+    });
     assert.equal(result.status, 1);
     assert.match(result.stderr, /already open/);
-  } finally { release(); }
+  } finally {
+    release();
+  }
 });
 
 test('undo backups remain explicitly recoverable without blocking earlier undo', t => {

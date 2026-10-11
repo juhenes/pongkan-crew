@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "no-control-regex": "off",
+    "no-misleading-character-class": "off",
+    "unicorn/no-useless-spread": "off"
+  }
+}

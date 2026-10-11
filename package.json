@@ -4,7 +4,22 @@
   "license": "MIT",
   "private": true,
   "type": "module",
-  "bin": { "pongkan-crew": "./src/cli.js" },
-  "scripts": { "start": "node src/cli.js", "test": "node --test" },
-  "engines": { "node": ">=22" }
+  "bin": {
+    "pongkan-crew": "./src/cli.js"
+  },
+  "scripts": {
+    "start": "node src/cli.js",
+    "test": "node --test",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "oxlint": "^1.87.0",
+    "prettier": "^3.9.10"
+  }
 }

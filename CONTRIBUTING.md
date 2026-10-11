@@ -16,6 +16,9 @@ Use Node.js 22 or newer. No npm runtime dependencies are needed.
 ```powershell
 node --test
 node .\scripts\preview-display.js
+node .\scripts\check-syntax.js
+npm run lint
+npm run format:check
 ```
 
 These checks run offline. Optional [live checks](README.md#development-checks) require Codex CLI and use your signed-in account.
@@ -28,7 +31,7 @@ no agent tasks. Physical touchpad gestures still need a manual check.
 ## Pull requests
 
 - Explain the problem and resulting behavior.
-- Report check results and anything not checked.
+- Report check results and anything not checked (automated CI verifies tests, syntax, and repository hygiene across Linux, macOS, and Windows on Node 22 and 24).
 - Update usage docs when behavior changes.
 - Exclude generated output, local state, installed dependencies, and secrets.
 

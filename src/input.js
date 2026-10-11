@@ -42,17 +42,25 @@ export function layoutInput(text, cursor, label, width, maxRows = 5) {
     const target = rows[cursorRow + delta];
     if (!target) return cursor;
     const next = rows[cursorRow + delta + 1];
-    let count = target.start, cells = 0;
+    let count = target.start,
+      cells = 0;
     for (const { segment } of segmenter.segment(target.text)) {
       if (cells + cellWidth(segment) > cursorCells) break;
       const end = count + Array.from(segment).length;
       if (next && end >= next.start) break;
-      cells += cellWidth(segment); count = end;
+      cells += cellWidth(segment);
+      count = end;
     }
     return count;
   };
-  return { lines: visible.map((row, index) => `${index ? padding : prefix}${row.text}`),
-    cursorRow: cursorRow - first, cursorColumn: cellWidth(prefix) + cursorCells,
-    hiddenBefore: first, hiddenAfter: rows.length - first - visible.length, totalRows: rows.length,
-    up: move(-1), down: move(1) };
+  return {
+    lines: visible.map((row, index) => `${index ? padding : prefix}${row.text}`),
+    cursorRow: cursorRow - first,
+    cursorColumn: cellWidth(prefix) + cursorCells,
+    hiddenBefore: first,
+    hiddenAfter: rows.length - first - visible.length,
+    totalRows: rows.length,
+    up: move(-1),
+    down: move(1),
+  };
 }

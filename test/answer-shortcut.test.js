@@ -2,11 +2,18 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { answerShortcut } from '../src/answer-shortcut.js';
 
-const makeApp = () => ({ selected: 'developer', crew: { state: { tasks: [
-  { id: 'a', member: 'chief', status: 'waiting', question: 'Scope?' },
-  { id: 'b', member: 'developer', status: 'waiting', question: 'Layout?' },
-  { id: 'c', member: 'developer', status: 'completed' },
-] } } });
+const makeApp = () => ({
+  selected: 'developer',
+  crew: {
+    state: {
+      tasks: [
+        { id: 'a', member: 'chief', status: 'waiting', question: 'Scope?' },
+        { id: 'b', member: 'developer', status: 'waiting', question: 'Layout?' },
+        { id: 'c', member: 'developer', status: 'completed' },
+      ],
+    },
+  },
+});
 
 test('shortcut prefers selected teammate, preserves draft, and cycles waiting questions', () => {
   const app = makeApp();

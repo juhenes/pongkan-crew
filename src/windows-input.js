@@ -2,15 +2,27 @@ import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 export function startWindowsInput(launch = spawn) {
-  const child = launch('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-File',
-    fileURLToPath(new URL('./windows-input.ps1', import.meta.url))],
-  { windowsHide: true, stdio: ['inherit', 'pipe', 'pipe'] });
+  const child = launch(
+    'powershell.exe',
+    [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-File',
+      fileURLToPath(new URL('./windows-input.ps1', import.meta.url)),
+    ],
+    { windowsHide: true, stdio: ['inherit', 'pipe', 'pipe'] },
+  );
   return child;
 }
 
 // Only one reader may own CONIN$: Node's stdin discards native mouse records.
 export function connectWindowsInput(consume, fallback, ready, failed, start = startWindowsInput) {
-  let child, stopped = false, active = false, didFallback = false, timer;
+  let child,
+    stopped = false,
+    active = false,
+    didFallback = false,
+    timer;
   const fail = () => {
     if (stopped || didFallback) return;
     didFallback = true;
@@ -27,7 +39,10 @@ export function connectWindowsInput(consume, fallback, ready, failed, start = st
     child.stdout.on('data', chunk => {
       if (stopped || didFallback) return;
       if (!active) {
-        if (chunk[0] !== 0) { fail(); return; }
+        if (chunk[0] !== 0) {
+          fail();
+          return;
+        }
         active = true;
         clearTimeout(timer);
         ready();
@@ -37,7 +52,9 @@ export function connectWindowsInput(consume, fallback, ready, failed, start = st
     });
     timer = setTimeout(fail, 10000);
     timer.unref();
-  } catch { fail(); }
+  } catch {
+    fail();
+  }
   return () => {
     if (stopped) return;
     stopped = true;
@@ -73,8 +90,13 @@ try {
   [Console]::WriteLine($original)
 } finally { [void][PongkanConsole]::CloseHandle($handle) }
 `;
-  return Number(execFileSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
-    { windowsHide: true, encoding: 'utf8', timeout: 10000 }).trim());
+  return Number(
+    execFileSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script], {
+      windowsHide: true,
+      encoding: 'utf8',
+      timeout: 10000,
+    }).trim(),
+  );
 }
 
 export function enableWindowsMouse(platform = process.platform, setMode = consoleMode) {
