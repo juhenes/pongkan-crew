@@ -19,8 +19,22 @@ export function presetListRows(presets, active, width) {
     add(`${preset.members.length} teammates`, 'muted');
     field('Lead', preset.lead);
     field('Reviewer', preset.reviewer);
-    field('Can edit', preset.members.filter(m => m.writable).map(m => m.name).join(', ') || 'None', 'assistant');
-    field('Read-only', preset.members.filter(m => !m.writable).map(m => m.name).join(', ') || 'None', 'muted');
+    field(
+      'Can edit',
+      preset.members
+        .filter(m => m.writable)
+        .map(m => m.name)
+        .join(', ') || 'None',
+      'assistant',
+    );
+    field(
+      'Read-only',
+      preset.members
+        .filter(m => !m.writable)
+        .map(m => m.name)
+        .join(', ') || 'None',
+      'muted',
+    );
     add('');
     add('');
   }

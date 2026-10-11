@@ -11,7 +11,10 @@ import { screen } from '../src/ui.js';
 function setup(t, runner) {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-tasks-'));
   const crew = new Crew(folder, { runner });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   return crew;
 }
 const reply = (event, text) => event({ type: 'item.completed', item: { type: 'agent_message', text } });
@@ -21,8 +24,13 @@ test('workflow chat displays the goal and readable plan instead of internal prom
   const crew = setup(t, async (args, prompt, event) => {
     event({ type: 'thread.started', thread_id: 'display-test-session' });
     if (prompt.includes('PONGKAN_PLAN')) {
-      await new Promise(resolve => { finishPlan = resolve; });
-      reply(event, JSON.stringify({ steps: [{ member: 'developer', task: 'Implement feature' }], reviewer: 'reviewer' }));
+      await new Promise(resolve => {
+        finishPlan = resolve;
+      });
+      reply(
+        event,
+        JSON.stringify({ steps: [{ member: 'developer', task: 'Implement feature' }], reviewer: 'reviewer' }),
+      );
     } else reply(event, prompt.includes('PONGKAN_SUMMARY') ? 'Completed feature and review.' : 'Verified work.');
   });
   const flow = crew.workflows.start('Build the feature');
@@ -30,7 +38,9 @@ test('workflow chat displays the goal and readable plan instead of internal prom
   try {
     assert.match(render(), /Build the feature/);
     assert.doesNotMatch(render(), /PONGKAN_PLAN|Roster:|Return ONLY JSON|Responsibilities:/);
-  } finally { finishPlan(); }
+  } finally {
+    finishPlan();
+  }
   await crew.workflows.settled(flow.id);
   assert.match(render(), /developer: Implement feature/);
   assert.match(render(), /Completed feature and review/);
@@ -50,7 +60,8 @@ test('workflow chat displays the goal and readable plan instead of internal prom
 });
 
 test('queue runs one writer, respects reordering and keeps per-task results', async t => {
-  const started = [], finishes = [];
+  const started = [],
+    finishes = [];
   const crew = setup(t, async (args, prompt, event) => {
     started.push(prompt);
     await new Promise(resolve => finishes.push(resolve));
@@ -66,8 +77,10 @@ test('queue runs one writer, respects reordering and keeps per-task results', as
   finishes.shift()();
   await crew.queue.settled(first.id);
   assert.match(started[1], /third/);
-  finishes.shift()(); await crew.queue.settled(third.id);
-  finishes.shift()(); await crew.queue.settled(second.id);
+  finishes.shift()();
+  await crew.queue.settled(third.id);
+  finishes.shift()();
+  await crew.queue.settled(second.id);
   assert.equal(second.result, 'Finished');
 });
 test('pause, cancel and restore never silently rerun interrupted tasks', async t => {
@@ -78,15 +91,20 @@ test('pause, cancel and restore never silently rerun interrupted tasks', async t
   crew.queue.cancel(task.id);
   assert.equal(task.status, 'cancelled');
   const pending = crew.queue.enqueue('developer', 'recover');
-  pending.status = 'running'; crew.save();
+  pending.status = 'running';
+  crew.save();
   const restored = new Crew(crew.folder);
   assert.equal(restored.state.tasks.find(t => t.id === pending.id).status, 'interrupted');
   assert.equal(restored.queue.paused, true);
 });
 test('queue cancellation stops execution and leaves a cancelled result', async t => {
-  const crew = setup(t, (args, prompt, event, signal) => new Promise((resolve, reject) => {
-    signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
-  }));
+  const crew = setup(
+    t,
+    (args, prompt, event, signal) =>
+      new Promise((resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      }),
+  );
   const task = crew.queue.enqueue('developer', 'cancel me');
   crew.queue.cancel(task.id);
   await crew.queue.settled(task.id);
@@ -96,9 +114,17 @@ test('Chief executes validated steps, hands off results, reviews and summarizes'
   const calls = [];
   const crew = setup(t, async (args, prompt, event) => {
     calls.push(prompt);
-    if (prompt.includes('PONGKAN_PLAN')) reply(event, JSON.stringify({ steps: [
-      { member: 'researcher', task: 'Find conventions' }, { member: 'developer', task: 'Implement feature' },
-    ], reviewer: 'reviewer' }));
+    if (prompt.includes('PONGKAN_PLAN'))
+      reply(
+        event,
+        JSON.stringify({
+          steps: [
+            { member: 'researcher', task: 'Find conventions' },
+            { member: 'developer', task: 'Implement feature' },
+          ],
+          reviewer: 'reviewer',
+        }),
+      );
     else reply(event, prompt.includes('PONGKAN_SUMMARY') ? 'Combined result' : 'Step result');
   });
   const workflow = crew.workflows.start('Build the feature');
@@ -112,7 +138,8 @@ test('Chief executes validated steps, hands off results, reviews and summarizes'
 test('invalid AI plans cannot dispatch workers', async t => {
   let calls = 0;
   const crew = setup(t, async (args, prompt, event) => {
-    calls++; reply(event, '{"steps":[{"member":"unknown","task":"edit"}],"reviewer":"reviewer"}');
+    calls++;
+    reply(event, '{"steps":[{"member":"unknown","task":"edit"}],"reviewer":"reviewer"}');
   });
   const workflow = crew.workflows.start('Build');
   await crew.workflows.settled(workflow.id);
@@ -140,19 +167,23 @@ test('review tasks wait for a stable workspace and block writers during review',
   const writer = crew.queue.enqueue('developer', 'Write');
   const review = crew.queue.enqueue('reviewer', 'Review', { readOnly: true, stableRead: true });
   assert.equal(review.status, 'queued');
-  finishes.shift()(); await crew.queue.settled(writer.id);
+  finishes.shift()();
+  await crew.queue.settled(writer.id);
   assert.equal(review.status, 'running');
   const next = crew.queue.enqueue('developer', 'More writes');
   assert.equal(next.status, 'queued');
-  finishes.shift()(); await crew.queue.settled(review.id);
-  finishes.shift()(); await crew.queue.settled(next.id);
+  finishes.shift()();
+  await crew.queue.settled(review.id);
+  finishes.shift()();
+  await crew.queue.settled(next.id);
 });
 
 test('failed workflow step cancels all dependent work and exposes the error', async t => {
   let calls = 0;
   const crew = setup(t, async (args, prompt, event) => {
     calls++;
-    if (prompt.includes('PONGKAN_PLAN')) reply(event, '{"steps":[{"member":"developer","task":"Implement"}],"reviewer":"reviewer"}');
+    if (prompt.includes('PONGKAN_PLAN'))
+      reply(event, '{"steps":[{"member":"developer","task":"Implement"}],"reviewer":"reviewer"}');
     else throw new Error('Build failed');
   });
   const workflow = crew.workflows.start('Build');

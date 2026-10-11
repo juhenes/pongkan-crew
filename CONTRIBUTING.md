@@ -17,6 +17,8 @@ Use Node.js 22 or newer. No npm runtime dependencies are needed.
 node --test
 node .\scripts\preview-display.js
 node .\scripts\check-syntax.js
+npm run lint
+npm run format:check
 ```
 
 These checks run offline. Optional [live checks](README.md#development-checks) require Codex CLI and use your signed-in account.

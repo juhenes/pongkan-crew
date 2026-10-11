@@ -8,21 +8,21 @@ No confirmed credential disclosure was detected in the checks below. The reposit
 
 ## Evidence and scope
 
-| Area | Check | Result |
-| --- | --- | --- |
-| Git history | All eight commits reachable from local refs; 78 distinct historical file blobs | No matches for the credential patterns checked; no historical paths for local crew state, environment secrets, private keys, or account configuration |
-| Current files | 62 tracked/non-ignored files at scan time; local Git config also checked without printing its values | No credential-pattern matches; one email match was the synthetic `test@example.invalid` fixture |
-| Secret patterns | Private-key headers, AWS access keys, common GitHub/OpenAI/Slack tokens, credential-bearing HTTP URLs, and long quoted secret assignments | No matches; custom token formats, encoded/encrypted secrets, rendered media text and arbitrary high-entropy values are not comprehensively detected |
-| Personal paths | Windows user-directory patterns in file content and history | No matches; this does not cover every operating-system path format |
-| Commit metadata | Author/committer email metadata across local refs | One distinct non-noreply email is present. Public Git history exposes this metadata; it was not reproduced in this report or rewritten |
-| Ignore rules | Representative state, environment, account configuration and private-key paths checked with `git check-ignore` | All checked private paths ignored; `.env.example` remains available for placeholder templates |
-| npm dependencies | `package.json` | No runtime, development, optional or bundled dependencies declared; no dependency lockfile needed for the current dependency-free package |
-| Package scripts | `start` and `test`; no `preinstall`, `install`, `postinstall` or other install hooks | Explicit start launches the app; tests run through Node's built-in runner. `private: true` prevents accidental npm publication |
-| Repository scripts | Offline preview and optional live-check scripts inspected | Live checks use the user's Codex account and are explicitly separate from the test command; workflow live checks restrict work to a temporary read-only fixture |
-| Git hooks and CI | Local hooks and tracked workflow paths inspected | Only inactive `.sample` hooks; no workflow or submodule configuration tracked. No CI token permissions to tighten in this snapshot |
-| Screenshot | `assets/images/pongkan-crew-cli.png` visually reviewed | No obvious account information, credentials or personal absolute path visible |
-| Animation | Nine evenly distributed samples from the 625-frame `todo-result.gif` visually reviewed | Samples show a generic todo demo with no obvious private information; not a frame-by-frame clearance |
-| Video and binary metadata | Media included in raw-byte credential/email/path pattern scan | No matches in available strings. MP4 playback/audio and complete structured media metadata were not reviewed; text scans do not inspect rendered video frames |
+| Area                      | Check                                                                                                                                     | Result                                                                                                                                                          |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Git history               | All eight commits reachable from local refs; 78 distinct historical file blobs                                                            | No matches for the credential patterns checked; no historical paths for local crew state, environment secrets, private keys, or account configuration           |
+| Current files             | 62 tracked/non-ignored files at scan time; local Git config also checked without printing its values                                      | No credential-pattern matches; one email match was the synthetic `test@example.invalid` fixture                                                                 |
+| Secret patterns           | Private-key headers, AWS access keys, common GitHub/OpenAI/Slack tokens, credential-bearing HTTP URLs, and long quoted secret assignments | No matches; custom token formats, encoded/encrypted secrets, rendered media text and arbitrary high-entropy values are not comprehensively detected             |
+| Personal paths            | Windows user-directory patterns in file content and history                                                                               | No matches; this does not cover every operating-system path format                                                                                              |
+| Commit metadata           | Author/committer email metadata across local refs                                                                                         | One distinct non-noreply email is present. Public Git history exposes this metadata; it was not reproduced in this report or rewritten                          |
+| Ignore rules              | Representative state, environment, account configuration and private-key paths checked with `git check-ignore`                            | All checked private paths ignored; `.env.example` remains available for placeholder templates                                                                   |
+| npm dependencies          | `package.json`                                                                                                                            | No runtime, development, optional or bundled dependencies declared; no dependency lockfile needed for the current dependency-free package                       |
+| Package scripts           | `start` and `test`; no `preinstall`, `install`, `postinstall` or other install hooks                                                      | Explicit start launches the app; tests run through Node's built-in runner. `private: true` prevents accidental npm publication                                  |
+| Repository scripts        | Offline preview and optional live-check scripts inspected                                                                                 | Live checks use the user's Codex account and are explicitly separate from the test command; workflow live checks restrict work to a temporary read-only fixture |
+| Git hooks and CI          | Local hooks and tracked workflow paths inspected                                                                                          | Only inactive `.sample` hooks; no workflow or submodule configuration tracked. No CI token permissions to tighten in this snapshot                              |
+| Screenshot                | `assets/images/pongkan-crew-cli.png` visually reviewed                                                                                    | No obvious account information, credentials or personal absolute path visible                                                                                   |
+| Animation                 | Nine evenly distributed samples from the 625-frame `todo-result.gif` visually reviewed                                                    | Samples show a generic todo demo with no obvious private information; not a frame-by-frame clearance                                                            |
+| Video and binary metadata | Media included in raw-byte credential/email/path pattern scan                                                                             | No matches in available strings. MP4 playback/audio and complete structured media metadata were not reviewed; text scans do not inspect rendered video frames   |
 
 The scan used local Git and Node tooling without sending repository data to an external service. Dedicated scanners such as Gitleaks and TruffleHog were not installed. It examined reachable history, not every unreachable object, reflog-only commit, external fork, remote-only branch, release attachment or hosted log.
 
@@ -58,11 +58,13 @@ Follow-up verification: all 130 offline tests passed, including six coordinator 
 ## Follow-up: CI/CD implementation and action hardening
 
 Automated CI/CD workflows and Dependabot configuration were added under `.github/`:
+
 - `.github/workflows/ci.yml`: Executes multi-platform matrix testing (`ubuntu-latest`, `windows-latest`, `macos-latest` on Node.js 22 and 24), runs JavaScript syntax validation via `node scripts/check-syntax.js`, verifies `npm pack --dry-run`, and tests sensitive path ignore rules.
 - `.github/workflows/release.yml`: Automates release asset generation and GitHub release drafting on version tags (`v*`) using GitHub's built-in CLI (`gh`), avoiding unvetted third-party publishing actions.
 - `.github/dependabot.yml`: Tracks and updates pinned GitHub Actions.
 
 Security posture adheres to the guidelines in [SECURITY.md](../SECURITY.md):
+
 - CI token permissions are restricted to `contents: read`.
 - External actions are pinned to reviewed 40-character commit hashes (`actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683` and `actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a`).
 - Offline CI runs without personal credentials or Codex secrets.

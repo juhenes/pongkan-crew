@@ -14,7 +14,10 @@ test('CLI entry point starts and displays help', () => {
 test('CLI preview initializes and renders without calling Codex', t => {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-cli-'));
   t.after(() => rmSync(folder, { recursive: true, force: true }));
-  const output = execFileSync(process.execPath, [cli, '--folder', folder, '--preview'], { encoding: 'utf8', timeout: 10000 });
+  const output = execFileSync(process.execPath, [cli, '--folder', folder, '--preview'], {
+    encoding: 'utf8',
+    timeout: 10000,
+  });
   assert.match(output, /Preview/);
   assert.match(output, /CHIEF/i);
 });

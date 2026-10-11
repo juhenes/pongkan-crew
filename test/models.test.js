@@ -17,14 +17,22 @@ test('inherited model display resolves Codex configuration and respects explicit
   let effectiveConfig = { model: 'project-model', model_reasoning_effort: 'high' };
   const spawnProcess = () => {
     const child = new EventEmitter();
-    child.stdout = new PassThrough(); child.stdin = new PassThrough(); child.stderr = new PassThrough();
-    child.kill = () => { killed = true; };
+    child.stdout = new PassThrough();
+    child.stdin = new PassThrough();
+    child.stderr = new PassThrough();
+    child.kill = () => {
+      killed = true;
+    };
     child.stdin.on('data', data => {
-      const request = JSON.parse(data.toString()); requests.push(request);
+      const request = JSON.parse(data.toString());
+      requests.push(request);
       if (!request.id) return;
-      const result = request.method === 'initialize' ? {} : request.method === 'config/read' ?
-        { config: effectiveConfig } :
-        { data: [{ model: 'fallback-model', isDefault: true, defaultReasoningEffort: 'medium' }] };
+      const result =
+        request.method === 'initialize'
+          ? {}
+          : request.method === 'config/read'
+            ? { config: effectiveConfig }
+            : { data: [{ model: 'fallback-model', isDefault: true, defaultReasoningEffort: 'medium' }] };
       child.stdout.write(JSON.stringify({ id: request.id, result }) + '\n');
     });
     return child;
@@ -36,7 +44,10 @@ test('inherited model display resolves Codex configuration and respects explicit
   assert.equal(requests.find(r => r.method === 'config/read').params.cwd, 'C:/project');
   assert.equal(killed, true);
   effectiveConfig = {};
-  assert.deepEqual(await readModelDefaults('C:/project', { spawnProcess }), { model: 'fallback-model', reasoningEffort: 'medium' });
+  assert.deepEqual(await readModelDefaults('C:/project', { spawnProcess }), {
+    model: 'fallback-model',
+    reasoningEffort: 'medium',
+  });
   assert.ok(requests.some(r => r.method === 'model/list'));
 });
 
@@ -45,8 +56,12 @@ test('model resolution times out and stops the configuration process', async () 
   let killed = false;
   const spawnProcess = () => {
     const child = new EventEmitter();
-    child.stdout = new PassThrough(); child.stdin = new PassThrough(); child.stderr = new PassThrough();
-    child.kill = () => { killed = true; };
+    child.stdout = new PassThrough();
+    child.stdin = new PassThrough();
+    child.stderr = new PassThrough();
+    child.kill = () => {
+      killed = true;
+    };
     return child;
   };
   await assert.rejects(readModelDefaults('C:/project', { spawnProcess, timeoutMs: 10 }), /Unable to resolve/);
@@ -56,7 +71,10 @@ test('model resolution times out and stops the configuration process', async () 
 function setup(t) {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-models-'));
   const crew = new Crew(folder, { runner: async () => {} });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   return { crew, selected: 'developer', notice: '', panel: null };
 }
 
@@ -101,10 +119,20 @@ test('model catalog uses installed Codex cache and handles missing or invalid ca
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-catalog-'));
   t.after(() => rmSync(folder, { recursive: true, force: true }));
   assert.deepEqual(readModelCatalog(folder), []);
-  writeFileSync(join(folder, 'models_cache.json'), JSON.stringify({ models: [
-    { slug: 'test-model', display_name: 'Test', visibility: 'list', supported_reasoning_levels: [{ effort: 'high' }] },
-    { slug: 'hidden-model', visibility: 'hide' },
-  ] }));
+  writeFileSync(
+    join(folder, 'models_cache.json'),
+    JSON.stringify({
+      models: [
+        {
+          slug: 'test-model',
+          display_name: 'Test',
+          visibility: 'list',
+          supported_reasoning_levels: [{ effort: 'high' }],
+        },
+        { slug: 'hidden-model', visibility: 'hide' },
+      ],
+    }),
+  );
   assert.deepEqual(readModelCatalog(folder), [{ id: 'test-model', name: 'Test', efforts: ['high'] }]);
   assert.throws(() => validateModelChoice('test-model', 'low', readModelCatalog(folder)), /supports/);
   writeFileSync(join(folder, 'models_cache.json'), '{broken');
@@ -117,7 +145,9 @@ test('requested model and effort are captured for the running turn', async t => 
   let release;
   app.crew.runner = async args => {
     assert.ok(args.includes('test-model'));
-    await new Promise(resolve => { release = resolve; });
+    await new Promise(resolve => {
+      release = resolve;
+    });
   };
   const task = app.crew.queue.enqueue('developer', 'Build');
   assert.equal(app.crew.member('developer').progress.model, 'test-model');
@@ -134,8 +164,15 @@ test('Crew Chat and workflow planning use each assigned teammate model', async t
   app.crew.runner = async (args, prompt, event) => {
     calls.push(args);
     event({ type: 'thread.started', thread_id: 'model-test-session' });
-    event({ type: 'item.completed', item: { type: 'agent_message', text: prompt.includes('PONGKAN_PLAN') ?
-      JSON.stringify({ steps: [{ member: 'developer', task: 'Build feature' }], reviewer: 'reviewer' }) : 'Result' } });
+    event({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        text: prompt.includes('PONGKAN_PLAN')
+          ? JSON.stringify({ steps: [{ member: 'developer', task: 'Build feature' }], reviewer: 'reviewer' })
+          : 'Result',
+      },
+    });
   };
   const discussion = app.crew.discussions.start('Discuss models', 'developer');
   await app.crew.queue.settled(discussion.taskIds.at(-1));
@@ -148,10 +185,13 @@ test('Crew Chat and workflow planning use each assigned teammate model', async t
 
 test('model list separates choices and provides usable all-crew and selected-member examples', async () => {
   const { modelCatalogLines } = await import('../src/models.js');
-  const lines = modelCatalogLines([
-    { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', efforts: ['low', 'medium', 'high'] },
-    { id: 'gpt-6-astra', name: 'gpt-6-astra', efforts: ['high'] },
-  ], 'frontend-dev');
+  const lines = modelCatalogLines(
+    [
+      { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol', efforts: ['low', 'medium', 'high'] },
+      { id: 'gpt-6-astra', name: 'gpt-6-astra', efforts: ['high'] },
+    ],
+    'frontend-dev',
+  );
   const text = lines.join('\n');
   assert.match(text, /\/model set all gpt-6\.1-sol medium/);
   assert.match(text, /\/model set frontend-dev gpt-6\.1-sol medium/);

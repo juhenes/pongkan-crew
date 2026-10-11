@@ -9,20 +9,31 @@ import { execute } from '../src/commands.js';
 test('individual follow-ups include saved context even when resuming a session', async t => {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-context-resume-'));
   const prompts = [];
-  const crew = new Crew(folder, { runner: async (args, prompt, event) => {
-    prompts.push(prompt);
-    event({ type: 'thread.started', thread_id: 'saved-session' });
-    event({ type: 'item.completed', item: { type: 'agent_message', text: 'Implement the orange navigation layout.' } });
-  } });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  const crew = new Crew(folder, {
+    runner: async (args, prompt, event) => {
+      prompts.push(prompt);
+      event({ type: 'thread.started', thread_id: 'saved-session' });
+      event({
+        type: 'item.completed',
+        item: { type: 'agent_message', text: 'Implement the orange navigation layout.' },
+      });
+    },
+  });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   await crew.send('developer', 'Suggest a navigation layout');
   await crew.send('developer', 'Proceed with that');
   assert.match(prompts[1], /Suggest a navigation layout/);
   assert.match(prompts[1], /Implement the orange navigation layout/);
   assert.match(prompts[1], /Proceed with that/);
   crew.member('developer').threadId = null;
-  crew.member('developer').messages.unshift({ role: 'user', text: 'Original requirement: retain keyboard navigation.' });
-  for (let index = 0; index < 25; index++) crew.member('developer').messages.push({ role: 'assistant', text: `Note ${index}` });
+  crew
+    .member('developer')
+    .messages.unshift({ role: 'user', text: 'Original requirement: retain keyboard navigation.' });
+  for (let index = 0; index < 25; index++)
+    crew.member('developer').messages.push({ role: 'assistant', text: `Note ${index}` });
   await crew.send('developer', 'Continue');
   assert.match(prompts[2], /Original requirement: retain keyboard navigation/);
 });
@@ -39,7 +50,8 @@ test('context optimization preserves user requirements, all sources, and reply b
   assert.ok(result.text.includes(records[0].text));
   assert.match(result.text, /developer task 12345678/);
   assert.match(result.text, /reviewer task 87654321/);
-  assert.match(result.text, /START/); assert.match(result.text, /END/);
+  assert.match(result.text, /START/);
+  assert.match(result.text, /END/);
   assert.match(result.text, /omitted/);
   assert.ok(result.stats.after < result.stats.before);
   assert.equal(JSON.stringify(records), before);
@@ -47,12 +59,24 @@ test('context optimization preserves user requirements, all sources, and reply b
 test('context mode persists and prompt statistics describe real injected text', async t => {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-context-'));
   let prompt;
-  const crew = new Crew(folder, { runner: async (args, text) => { prompt = text; } });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  const crew = new Crew(folder, {
+    runner: async (args, text) => {
+      prompt = text;
+    },
+  });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   const app = { crew, selected: 'chief' };
   execute(app, '/context on');
   assert.equal(new Crew(folder).state.contextOptimization, true);
-  crew.member('chief').messages.push({ role: 'user', text: 'Keep all acceptance criteria.' }, { role: 'assistant', text: 'begin '.repeat(10000) + 'end' });
+  crew
+    .member('chief')
+    .messages.push(
+      { role: 'user', text: 'Keep all acceptance criteria.' },
+      { role: 'assistant', text: 'begin '.repeat(10000) + 'end' },
+    );
   await crew.send('chief', 'Continue');
   assert.match(prompt, /Keep all acceptance criteria/);
   assert.match(prompt, /omitted/);
@@ -67,19 +91,35 @@ test('workflow optimization retains full saved results and sends task requiremen
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-context-flow-'));
   const calls = [];
   const longResult = 'Research start\n' + 'Evidence '.repeat(10000) + '\nResearch end';
-  const crew = new Crew(folder, { runner: async (args, prompt, event) => {
-    calls.push({ args, prompt });
-    const text = prompt.includes('PONGKAN_PLAN') ? JSON.stringify({ steps: [{ member: 'researcher', task: 'Investigate' }, { member: 'developer', task: 'Implement without deleting files' }], reviewer: 'reviewer' }) : prompt.startsWith('You are researcher') ? longResult : 'Checked';
-    event({ type: 'item.completed', item: { type: 'agent_message', text } });
-  } });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  const crew = new Crew(folder, {
+    runner: async (args, prompt, event) => {
+      calls.push({ args, prompt });
+      const text = prompt.includes('PONGKAN_PLAN')
+        ? JSON.stringify({
+            steps: [
+              { member: 'researcher', task: 'Investigate' },
+              { member: 'developer', task: 'Implement without deleting files' },
+            ],
+            reviewer: 'reviewer',
+          })
+        : prompt.startsWith('You are researcher')
+          ? longResult
+          : 'Checked';
+      event({ type: 'item.completed', item: { type: 'agent_message', text } });
+    },
+  });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   execute({ crew }, '/context on');
   const flow = crew.workflows.start('Investigate and implement without deleting files');
   await crew.workflows.settled(flow.id);
   assert.equal(flow.status, 'completed');
   const work = calls.find(call => call.prompt.startsWith('You are developer'));
   assert.match(work.prompt, /Implement without deleting files/);
-  assert.match(work.prompt, /Research start/); assert.match(work.prompt, /Research end/);
+  assert.match(work.prompt, /Research start/);
+  assert.match(work.prompt, /Research end/);
   assert.match(work.prompt, /omitted/);
   assert.match(work.prompt, /Do not modify .pongkan-crew/);
   assert.ok(calls.find(call => call.prompt.startsWith('You are reviewer')).args.includes('read-only'));
@@ -90,14 +130,19 @@ test('workflow optimization retains full saved results and sends task requiremen
 test('discussion optimization preserves long user topics and never changes the saved chat', async t => {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-context-discuss-'));
   const crew = new Crew(folder, { runner: async () => {} });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
-  execute({ crew }, '/context on'); crew.queue.pause();
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
+  execute({ crew }, '/context on');
+  crew.queue.pause();
   const topic = 'Do not publish. '.repeat(4000);
   const discussion = crew.discussions.start(topic, 'researcher');
   discussion.messages.push({ role: 'assistant', speaker: 'researcher', text: 'Long evidence '.repeat(5000) });
   const before = JSON.stringify(discussion.messages);
   const prompt = crew.discussions.context(crew.queue.get(discussion.taskIds[0]));
-  assert.ok(prompt.includes(topic)); assert.match(prompt, /omitted/);
+  assert.ok(prompt.includes(topic));
+  assert.match(prompt, /omitted/);
   assert.match(prompt, /Discuss only. Do not edit files/);
   assert.equal(JSON.stringify(discussion.messages), before);
 });

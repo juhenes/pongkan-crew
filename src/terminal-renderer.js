@@ -3,7 +3,9 @@ export class TerminalRenderer {
   lines = [];
   size = null;
   cursor = '';
-  constructor(output) { this.output = output; }
+  constructor(output) {
+    this.output = output;
+  }
   draw(content, row, column, size) {
     const lines = content.split('\n');
     const reset = size !== this.size;
@@ -13,7 +15,9 @@ export class TerminalRenderer {
     }
     const cursor = `\x1b[${row};${column}H`;
     if (!patch && cursor === this.cursor) return;
-    this.lines = lines; this.size = size; this.cursor = cursor;
+    this.lines = lines;
+    this.size = size;
+    this.cursor = cursor;
     return this.output.write(`\x1b[?25l${patch}${cursor}\x1b[?25h`);
   }
 }
@@ -22,8 +26,14 @@ export function scheduleRender(draw, { schedule = setTimeout, cancel = clearTime
   let pending = null;
   const request = () => {
     if (pending !== null) return;
-    pending = schedule(() => { pending = null; draw(); }, delay);
+    pending = schedule(() => {
+      pending = null;
+      draw();
+    }, delay);
   };
-  request.cancel = () => { if (pending !== null) cancel(pending); pending = null; };
+  request.cancel = () => {
+    if (pending !== null) cancel(pending);
+    pending = null;
+  };
   return request;
 }

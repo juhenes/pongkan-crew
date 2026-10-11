@@ -48,7 +48,9 @@ test('preset workflows use their lead and reviewer and group chat ends with the 
   const speakers = [];
   const crew = setup(t, async (args, prompt, event) => {
     speakers.push(prompt.match(/^You are ([^,]+)/)[1]);
-    const text = prompt.includes('PONGKAN_PLAN') ? JSON.stringify({ steps: [{ member: 'frontend-dev', task: 'Inspect layout' }], reviewer: 'qa-reviewer' }) : 'Done';
+    const text = prompt.includes('PONGKAN_PLAN')
+      ? JSON.stringify({ steps: [{ member: 'frontend-dev', task: 'Inspect layout' }], reviewer: 'qa-reviewer' })
+      : 'Done';
     event({ type: 'item.completed', item: { type: 'agent_message', text } });
   });
   crew.presets.apply('web');

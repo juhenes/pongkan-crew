@@ -8,11 +8,18 @@ import { execute } from '../src/commands.js';
 
 function setup(t) {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-coordinators-'));
-  const crew = new Crew(folder, { runner: async (args, prompt, event) => {
-    const text = prompt.includes('PONGKAN_PLAN') ? JSON.stringify({ steps: [{ member: 'researcher', task: 'Inspect' }], reviewer: 'auditor' }) : 'Verified';
-    event({ type: 'item.completed', item: { type: 'agent_message', text } });
-  } });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  const crew = new Crew(folder, {
+    runner: async (args, prompt, event) => {
+      const text = prompt.includes('PONGKAN_PLAN')
+        ? JSON.stringify({ steps: [{ member: 'researcher', task: 'Inspect' }], reviewer: 'auditor' })
+        : 'Verified';
+      event({ type: 'item.completed', item: { type: 'agent_message', text } });
+    },
+  });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   return { crew, selected: 'chief' };
 }
 test('default coordinator renames persist and workflows use the renamed lead and reviewer', async t => {
@@ -30,7 +37,12 @@ test('default coordinator renames persist and workflows use the renamed lead and
 test('default coordinators cannot be removed and reviewer cannot gain writer access through either command', t => {
   const app = setup(t);
   const original = readFileSync(app.crew.file, 'utf8');
-  for (const command of ['/crew remove chief', '/crew remove reviewer', '/crew access reviewer write', '/crew role reviewer --role fullstack-dev']) {
+  for (const command of [
+    '/crew remove chief',
+    '/crew remove reviewer',
+    '/crew access reviewer write',
+    '/crew role reviewer --role fullstack-dev',
+  ]) {
     assert.throws(() => execute(app, command), /designated|read-only/);
     assert.equal(readFileSync(app.crew.file, 'utf8'), original);
   }
@@ -62,8 +74,16 @@ test('legacy default preset archives retain coordinator protection through resto
   legacyMembers.find(m => m.name === 'reviewer').writable = true;
   for (const action of ['restore', 'undo']) {
     const id = action === 'restore' ? '11111111' : '22222222';
-    app.crew.state.archives.push({ id, at: new Date().toISOString(), reason: 'preset legacy', kind: 'preset', members: structuredClone(legacyMembers), coordination: null });
-    if (action === 'restore') app.crew.presets.restore(id); else app.crew.undo();
+    app.crew.state.archives.push({
+      id,
+      at: new Date().toISOString(),
+      reason: 'preset legacy',
+      kind: 'preset',
+      members: structuredClone(legacyMembers),
+      coordination: null,
+    });
+    if (action === 'restore') app.crew.presets.restore(id);
+    else app.crew.undo();
     assert.deepEqual(app.crew.state.coordination, { lead: 'chief', reviewer: 'reviewer' });
     assert.equal(app.crew.member('reviewer').writable, false);
     assert.equal(new Crew(app.crew.folder).member('reviewer').writable, false);

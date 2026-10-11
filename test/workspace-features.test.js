@@ -10,13 +10,26 @@ import { screen } from '../src/ui.js';
 import { validateState } from '../src/state.js';
 import { runWorker } from '../src/scheduler.js';
 
-function setup(t, runner = async (args, prompt, event) => {
-  event({ type: 'item.completed', item: { type: 'agent_message', text: prompt.includes('PONGKAN_PLAN') ?
-    JSON.stringify({ steps: [{ member: 'developer', task: 'Build navigation' }], reviewer: 'reviewer' }) : 'Verified keyboard navigation.' } });
-}) {
+function setup(
+  t,
+  runner = async (args, prompt, event) => {
+    event({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        text: prompt.includes('PONGKAN_PLAN')
+          ? JSON.stringify({ steps: [{ member: 'developer', task: 'Build navigation' }], reviewer: 'reviewer' })
+          : 'Verified keyboard navigation.',
+      },
+    });
+  },
+) {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-workspace-'));
   const crew = new Crew(folder, { runner });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   return { crew, selected: 'developer', view: 'group', scroll: 0 };
 }
 
@@ -68,18 +81,26 @@ test('named shared chats isolate discussion history when reopening older topics'
   app.crew.queue.pause();
   execute(app, '/conversation new group Login plan');
   const login = app.crew.state.activeGroupConversation;
-  execute(app, 'Discuss login'); app.crew.discussions.stop();
+  execute(app, 'Discuss login');
+  app.crew.discussions.stop();
   execute(app, '/conversation new group Dashboard plan');
-  execute(app, 'Discuss dashboard'); app.crew.discussions.stop();
+  execute(app, 'Discuss dashboard');
+  app.crew.discussions.stop();
   execute(app, `/conversation open ${login}`);
   assert.equal(app.crew.discussions.current.messages[0].text, 'Discuss login');
   execute(app, 'Continue login');
-  assert.deepEqual(app.crew.discussions.current.messages.map(m => m.text), ['Discuss login', 'Continue login']);
+  assert.deepEqual(
+    app.crew.discussions.current.messages.map(m => m.text),
+    ['Discuss login', 'Continue login'],
+  );
 });
 
 test('project memory persists, is bounded, and reaches tasks without changing access', async t => {
   let promptSeen, argsSeen;
-  const app = setup(t, async (args, prompt) => { argsSeen = args; promptSeen = prompt; });
+  const app = setup(t, async (args, prompt) => {
+    argsSeen = args;
+    promptSeen = prompt;
+  });
   execute(app, '/memory add Preserve keyboard navigation.');
   const entry = app.crew.memory.list()[0];
   assert.equal(new Crew(app.crew.folder).memory.list()[0].text, 'Preserve keyboard navigation.');
@@ -95,15 +116,24 @@ test('isolated workflows execute concurrently in separate Git worktrees and reta
   const holds = [];
   const app = setup(t, async (args, prompt, event, signal, options) => {
     if (prompt.includes('PONGKAN_PLAN')) {
-      event({ type: 'item.completed', item: { type: 'agent_message', text: JSON.stringify({ steps: [{ member: 'developer', task: 'Build' }], reviewer: 'reviewer' }) } });
+      event({
+        type: 'item.completed',
+        item: {
+          type: 'agent_message',
+          text: JSON.stringify({ steps: [{ member: 'developer', task: 'Build' }], reviewer: 'reviewer' }),
+        },
+      });
     } else if (prompt.startsWith('You are developer')) {
-      await new Promise(resolve => { holds.push({ resolve, folder: options.cwd }); });
+      await new Promise(resolve => {
+        holds.push({ resolve, folder: options.cwd });
+      });
       writeFileSync(join(options.cwd, 'feature.txt'), prompt.includes('First feature') ? 'first' : 'second');
       event({ type: 'item.completed', item: { type: 'agent_message', text: 'Built in isolation' } });
     } else event({ type: 'item.completed', item: { type: 'agent_message', text: 'Reviewed' } });
   });
   const git = args => execFileSync('git', args, { cwd: app.crew.folder, windowsHide: true });
-  git(['init']); git(['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'Initial']);
+  git(['init']);
+  git(['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '--allow-empty', '-m', 'Initial']);
   const first = await app.crew.workflows.startIsolated('First feature');
   const second = await app.crew.workflows.startIsolated('Second feature');
   for (let count = 0; holds.length < 2 && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 10));
@@ -112,13 +142,21 @@ test('isolated workflows execute concurrently in separate Git worktrees and reta
   assert.equal(app.crew.activeWrites.size, 2);
   holds.forEach(h => h.resolve());
   await Promise.all([app.crew.workflows.settled(first.id), app.crew.workflows.settled(second.id)]);
-  assert.equal(first.status, 'completed'); assert.equal(second.status, 'completed');
+  assert.equal(first.status, 'completed');
+  assert.equal(second.status, 'completed');
   assert.ok(first.workspace.startsWith(join(app.crew.folder, '.pongkan-crew')));
   assert.match(first.branch, /^pongkan\//);
   assert.equal(existsSync(join(app.crew.folder, 'feature.txt')), false);
-  for (const flow of [first, second]) assert.deepEqual(app.crew.state.tasks.find(t => t.workflowId === flow.id && t.kind === 'work').diff.files, ['feature.txt']);
+  for (const flow of [first, second])
+    assert.deepEqual(app.crew.state.tasks.find(t => t.workflowId === flow.id && t.kind === 'work').diff.files, [
+      'feature.txt',
+    ]);
   execFileSync('git', ['-C', first.workspace, 'add', 'feature.txt'], { windowsHide: true });
-  execFileSync('git', ['-C', first.workspace, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'Feature'], { windowsHide: true });
+  execFileSync(
+    'git',
+    ['-C', first.workspace, '-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'Feature'],
+    { windowsHide: true },
+  );
   assert.match(await app.crew.worktrees.diff(first.id), /\+first/);
 });
 
@@ -127,7 +165,10 @@ test('steering a running task schedules a continuation and records actual delive
   let release;
   const app = setup(t, async (args, prompt, event) => {
     prompts.push(prompt);
-    if (prompts.length === 1) await new Promise(resolve => { release = resolve; });
+    if (prompts.length === 1)
+      await new Promise(resolve => {
+        release = resolve;
+      });
     event({ type: 'item.completed', item: { type: 'agent_message', text: `Pass ${prompts.length}` } });
   });
   const task = app.crew.queue.enqueue('developer', 'Build navigation');
@@ -138,7 +179,8 @@ test('steering a running task schedules a continuation and records actual delive
   await app.crew.queue.settled(task.id);
   assert.equal(prompts.length, 2);
   assert.match(prompts[1], /Keep the original colors/);
-  assert.match(task.result, /Pass 1/); assert.match(task.result, /Pass 2/);
+  assert.match(task.result, /Pass 1/);
+  assert.match(task.result, /Pass 2/);
   assert.ok(task.steering[0].appliedAt);
   assert.throws(() => execute(app, `/steer ${task.id} Too late`), /finished/);
 });
@@ -170,7 +212,15 @@ test('GitHub import uses argument arrays and keeps source text as quoted finding
   const calls = [];
   app.crew.github = new Github(app.crew.folder, async (file, args, options) => {
     calls.push({ file, args, options });
-    return { stdout: JSON.stringify({ title: 'Fix navigation', body: 'Preserve keyboard support.', url: 'https://github.com/example/project/issues/12', number: 12, state: 'OPEN' }) };
+    return {
+      stdout: JSON.stringify({
+        title: 'Fix navigation',
+        body: 'Preserve keyboard support.',
+        url: 'https://github.com/example/project/issues/12',
+        number: 12,
+        state: 'OPEN',
+      }),
+    };
   });
   await execute(app, '/github task example/project 12');
   assert.match(app.crew.state.workflows[0].text, /Preserve keyboard support/);
@@ -184,8 +234,12 @@ test('GitHub import uses argument arrays and keeps source text as quoted finding
 test('switching conversations while tasks run preserves both destinations and cancellation targets', async t => {
   const holds = [];
   const app = setup(t, async (args, prompt, event, signal) => {
-    await new Promise(resolve => { holds.push({ resolve, signal }); signal.addEventListener('abort', resolve, { once: true }); });
-    if (!signal.aborted) event({ type: 'item.completed', item: { type: 'agent_message', text: 'Finished ' + prompt.split('\n').at(-1) } });
+    await new Promise(resolve => {
+      holds.push({ resolve, signal });
+      signal.addEventListener('abort', resolve, { once: true });
+    });
+    if (!signal.aborted)
+      event({ type: 'item.completed', item: { type: 'agent_message', text: 'Finished ' + prompt.split('\n').at(-1) } });
   });
   execute(app, '/conversation new researcher First');
   const firstId = app.crew.state.activeConversations.researcher;
@@ -195,10 +249,12 @@ test('switching conversations while tasks run preserves both destinations and ca
   const second = app.crew.queue.enqueue('researcher', 'Second topic');
   assert.equal(holds.length, 2);
   execute(app, '/stop');
-  assert.equal(holds[0].signal.aborted, false); assert.equal(holds[1].signal.aborted, true);
+  assert.equal(holds[0].signal.aborted, false);
+  assert.equal(holds[1].signal.aborted, true);
   holds[0].resolve();
   await Promise.all([app.crew.queue.settled(first.id), app.crew.queue.settled(second.id)]);
-  assert.equal(first.status, 'completed'); assert.equal(second.status, 'cancelled');
+  assert.equal(first.status, 'completed');
+  assert.equal(second.status, 'cancelled');
   assert.match(app.crew.conversations.get(firstId).messages.at(-1).text, /Finished First topic/);
   assert.doesNotMatch(JSON.stringify(app.crew.conversations.get(secondId).messages), /First topic/);
 });
@@ -206,11 +262,14 @@ test('switching conversations while tasks run preserves both destinations and ca
 test('worktree creation rejects dirty tracked files without dispatching a workflow', async t => {
   const { crew } = setup(t);
   const git = args => execFileSync('git', args, { cwd: crew.folder, windowsHide: true });
-  git(['init']); writeFileSync(join(crew.folder, 'tracked.txt'), 'original'); git(['add', 'tracked.txt']);
+  git(['init']);
+  writeFileSync(join(crew.folder, 'tracked.txt'), 'original');
+  git(['add', 'tracked.txt']);
   git(['-c', 'user.name=Test', '-c', 'user.email=test@example.com', 'commit', '-m', 'Initial']);
   writeFileSync(join(crew.folder, 'tracked.txt'), 'changed');
   await assert.rejects(crew.workflows.startIsolated('Do work'), /Commit or stash/);
-  assert.equal(crew.state.workflows.length, 0); assert.equal(crew.state.tasks.length, 0);
+  assert.equal(crew.state.workflows.length, 0);
+  assert.equal(crew.state.tasks.length, 0);
 });
 
 test('headless worker dispatches due jobs once and exits after completion', async t => {
@@ -238,12 +297,19 @@ test('new state validates conversation ownership and steering types', t => {
 
 test('progress bursts throttle disk writes while retaining final events and replies', async t => {
   const { crew } = setup(t, async (args, prompt, event) => {
-    for (let index = 0; index < 100; index++) event({ type: 'item.started', item: { type: 'command_execution', id: `cmd-${index}`, command: 'Inspect files' } });
+    for (let index = 0; index < 100; index++)
+      event({
+        type: 'item.started',
+        item: { type: 'command_execution', id: `cmd-${index}`, command: 'Inspect files' },
+      });
     event({ type: 'item.completed', item: { type: 'agent_message', text: 'Checked.' } });
   });
   let saves = 0;
   const original = crew.save.bind(crew);
-  crew.save = () => { saves++; original(); };
+  crew.save = () => {
+    saves++;
+    original();
+  };
   await crew.send('researcher', 'Inspect');
   assert.ok(saves <= 5, `Expected throttled saves, received ${saves}`);
   assert.equal(crew.member('researcher').progress.events, 101);
@@ -254,11 +320,18 @@ test('a waiting question stays in its original named conversation', async t => {
   let calls = 0;
   const app = setup(t, async (args, prompt, event) => {
     calls++;
-    event({ type: 'item.completed', item: { type: 'agent_message', text: calls === 1 ? 'PONGKAN_QUESTION: Which login provider?' : 'Dashboard complete.' } });
+    event({
+      type: 'item.completed',
+      item: {
+        type: 'agent_message',
+        text: calls === 1 ? 'PONGKAN_QUESTION: Which login provider?' : 'Dashboard complete.',
+      },
+    });
   });
   execute(app, '/conversation new developer Login');
   const first = app.crew.queue.enqueue('developer', 'Build login');
-  for (let count = 0; first.status !== 'waiting' && count < 100; count++) await new Promise(resolve => setTimeout(resolve, 5));
+  for (let count = 0; first.status !== 'waiting' && count < 100; count++)
+    await new Promise(resolve => setTimeout(resolve, 5));
   assert.equal(first.status, 'waiting');
   execute(app, '/conversation new developer Dashboard');
   const second = app.crew.queue.enqueue('developer', 'Build dashboard');

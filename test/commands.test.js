@@ -16,10 +16,12 @@ function setup(t) {
 
 test('new-all opens fresh saved chats for the whole crew and preserves previous history across restart', t => {
   const app = setup(t);
-  app.view = 'activity'; app.selected = 'developer';
+  app.view = 'activity';
+  app.selected = 'developer';
   app.crew.member('chief').messages.push({ role: 'user', text: 'Keep legacy history' });
   const old = app.crew.conversations.create('developer', 'Earlier work');
-  old.messages.push({ role: 'assistant', text: 'Keep named history' }); old.threadId = 'old-session';
+  old.messages.push({ role: 'assistant', text: 'Keep named history' });
+  old.threadId = 'old-session';
   const oldGroup = app.crew.conversations.create('group', 'Earlier discussion');
   app.crew.discussions.newConversation();
   execute(app, '/new-all');
@@ -80,7 +82,13 @@ test('crew controls persist names, roles and permissions and retain an active se
 test('busy members cannot be removed or reconfigured and last member cannot be removed', t => {
   const app = setup(t);
   app.crew.running.set('chief', new AbortController());
-  for (const line of ['/crew remove chief', '/crew rename chief boss', '/crew role chief New role', '/crew access chief write', '/new']) {
+  for (const line of [
+    '/crew remove chief',
+    '/crew rename chief boss',
+    '/crew role chief New role',
+    '/crew access chief write',
+    '/new',
+  ]) {
     assert.throws(() => execute(app, line), /Stop/);
   }
   app.crew.running.clear();

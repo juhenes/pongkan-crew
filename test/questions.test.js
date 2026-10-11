@@ -10,13 +10,19 @@ import { validateState } from '../src/state.js';
 
 const reply = (event, text) => event({ type: 'item.completed', item: { type: 'agent_message', text } });
 async function until(check) {
-  for (let i = 0; i < 200; i++) { if (check()) return; await new Promise(r => setTimeout(r, 5)); }
+  for (let i = 0; i < 200; i++) {
+    if (check()) return;
+    await new Promise(r => setTimeout(r, 5));
+  }
   throw new Error('Timed out');
 }
 function setup(t, runner) {
   const folder = mkdtempSync(join(tmpdir(), 'pongkan-questions-'));
   const crew = new Crew(folder, { runner });
-  t.after(async () => { await crew.close(); rmSync(folder, { recursive: true, force: true }); });
+  t.after(async () => {
+    await crew.close();
+    rmSync(folder, { recursive: true, force: true });
+  });
   return crew;
 }
 test('question holds dependent work and answer resumes the same task', async t => {
@@ -24,7 +30,10 @@ test('question holds dependent work and answer resumes the same task', async t =
   const crew = setup(t, async (args, prompt, event) => {
     calls++;
     if (calls === 1) reply(event, 'PONGKAN_QUESTION: Which layout?');
-    else { assert.match(prompt, /Use a list/); reply(event, 'Done'); }
+    else {
+      assert.match(prompt, /Use a list/);
+      reply(event, 'Done');
+    }
   });
   const task = crew.queue.enqueue('developer', 'Build');
   const next = crew.queue.enqueue('reviewer', 'Review', { dependsOn: task.id });
@@ -42,8 +51,10 @@ test('question holds dependent work and answer resumes the same task', async t =
 test('workflow continues through review and summary after clarification', async t => {
   let developerTurns = 0;
   const crew = setup(t, async (args, prompt, event) => {
-    if (prompt.includes('PONGKAN_PLAN')) reply(event, JSON.stringify({ steps: [{ member: 'developer', task: 'Build' }], reviewer: 'reviewer' }));
-    else if (prompt.startsWith('You are developer')) reply(event, ++developerTurns === 1 ? 'PONGKAN_QUESTION: Which layout?' : 'Implemented list');
+    if (prompt.includes('PONGKAN_PLAN'))
+      reply(event, JSON.stringify({ steps: [{ member: 'developer', task: 'Build' }], reviewer: 'reviewer' }));
+    else if (prompt.startsWith('You are developer'))
+      reply(event, ++developerTurns === 1 ? 'PONGKAN_QUESTION: Which layout?' : 'Implemented list');
     else reply(event, 'Verified');
   });
   const flow = crew.workflows.start('Build');
@@ -88,7 +99,8 @@ test('questions off is saved and forbids waiting on optional choices', async t =
 });
 test('explicit blocker fails workflow and cancels dependent assignments', async t => {
   const crew = setup(t, async (args, prompt, event) => {
-    if (prompt.includes('PONGKAN_PLAN')) reply(event, JSON.stringify({ steps: [{ member: 'developer', task: 'Build' }], reviewer: 'reviewer' }));
+    if (prompt.includes('PONGKAN_PLAN'))
+      reply(event, JSON.stringify({ steps: [{ member: 'developer', task: 'Build' }], reviewer: 'reviewer' }));
     else reply(event, 'PONGKAN_BLOCKED: Approval denied for npm');
   });
   const flow = crew.workflows.start('Build');

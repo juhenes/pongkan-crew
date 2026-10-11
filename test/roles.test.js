@@ -29,17 +29,24 @@ test('catalog previews specialist instructions and installs roles with explicit 
   assert.equal(crew.member('search').writable, false);
   assert.match(new Crew(crew.folder).member('search').role, /security/i);
   assert.throws(() => execute(app, '/crew add invalid --role missing'), /Unknown role/);
-  assert.equal(crew.state.members.some(m => m.name === 'invalid'), false);
+  assert.equal(
+    crew.state.members.some(m => m.name === 'invalid'),
+    false,
+  );
 });
 test('expanded web crew supports database, issues, and search specialists with shared roster context', async t => {
   let captured;
   const crew = setup(t, async (args, prompt, event) => {
     captured = prompt;
-    event({ type: 'item.completed', item: { type: 'agent_message', text: 'Coordinate the schema contract with backend-dev.' } });
+    event({
+      type: 'item.completed',
+      item: { type: 'agent_message', text: 'Coordinate the schema contract with backend-dev.' },
+    });
   });
   crew.presets.apply('web');
   assert.ok(crew.state.members.length > 6);
-  for (const name of ['database-dev', 'version-control', 'seo-aeo-geo-specialist', 'security-reviewer']) crew.member(name);
+  for (const name of ['database-dev', 'version-control', 'seo-aeo-geo-specialist', 'security-reviewer'])
+    crew.member(name);
   await crew.send('database-dev', 'Review the data model', { readOnly: true });
   assert.match(captured, /Team roster/);
   assert.match(captured, /backend-dev/);
@@ -62,17 +69,33 @@ test('catalog roles respect busy members and reviewer access; apply does not ove
   assert.throws(() => execute(app, '/crew role backend-dev --role database-dev'), /Stop/);
   crew.running.clear();
   crew.member('backend-dev').role = 'My custom instructions';
-  assert.equal(new Crew(crew.folder).member('backend-dev').role, crew.presets.get('web').members.find(m => m.name === 'backend-dev').role);
+  assert.equal(
+    new Crew(crew.folder).member('backend-dev').role,
+    crew.presets.get('web').members.find(m => m.name === 'backend-dev').role,
+  );
   crew.save();
   assert.equal(new Crew(crew.folder).member('backend-dev').role, 'My custom instructions');
 });
 test('expanded workflows accept seven specialist steps while keeping a bounded plan', t => {
   const crew = setup(t);
   crew.presets.apply('web');
-  const steps = ['architect', 'ui-ux-designer', 'database-dev', 'backend-dev', 'frontend-dev', 'test-engineer', 'version-control']
-    .map(member => ({ member, task: 'Complete assigned scope and provide verification and handoff.' }));
-  assert.equal(validatePlan({ steps, reviewer: 'qa-reviewer' }, crew.state.members, crew.leadName, crew.reviewerName).steps.length, 7);
-  assert.throws(() => validatePlan({ steps: [...steps, ...steps], reviewer: 'qa-reviewer' }, crew.state.members, crew.leadName), /Invalid/);
+  const steps = [
+    'architect',
+    'ui-ux-designer',
+    'database-dev',
+    'backend-dev',
+    'frontend-dev',
+    'test-engineer',
+    'version-control',
+  ].map(member => ({ member, task: 'Complete assigned scope and provide verification and handoff.' }));
+  assert.equal(
+    validatePlan({ steps, reviewer: 'qa-reviewer' }, crew.state.members, crew.leadName, crew.reviewerName).steps.length,
+    7,
+  );
+  assert.throws(
+    () => validatePlan({ steps: [...steps, ...steps], reviewer: 'qa-reviewer' }, crew.state.members, crew.leadName),
+    /Invalid/,
+  );
 });
 test('role completion and expanded sidebar keep specialist selection and view controls visible', t => {
   assert.deepEqual(completions('/roles show database', []), ['/roles show database-dev']);
