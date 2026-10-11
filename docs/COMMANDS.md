@@ -14,7 +14,7 @@ Enter commands **inside Pongkan Crew**, one message at a time, except for termin
 
 Plain text goes to the selected teammate in Chat or continues the shared read-only discussion in Crew Chat. Both include saved conversation context on follow-ups. Activity accepts commands only. `/task` goes to the lead; when used from Crew Chat, it includes the discussion as context.
 
-`/crew-task [GOAL]` uses the latest Crew Chat as context from any tab. Without a goal, it asks the lead to implement the agreed plan; with a goal, it uses that instruction plus the discussion. It requires a nonempty Crew Chat and waits for you to finish or stop an active discussion. Like `/task`, it creates a coordinated workflow and opens the lead's individual Chat. `/task GOAL` requires a goal and only attaches Crew Chat automatically when invoked from that view.
+`/crew-task [GOAL]` uses the latest Crew Chat as context from any tab. Without a goal, it asks the lead to implement the agreed plan; with a goal, it uses that instruction plus the discussion. It requires a nonempty Crew Chat and waits for you to finish or stop an active discussion. It creates a coordinated workflow and opens Crew Chat, where the lead's plan, teammate replies, review and final summary appear as turns finish. `/task GOAL` opens the lead's individual Chat and only attaches Crew Chat automatically when invoked from that view.
 
 ## Chat, assignments, and discussions
 
@@ -32,7 +32,7 @@ Plain text goes to the selected teammate in Chat or continues the shared read-on
 | `/group` | Open the latest shared Crew Chat | `/group` |
 | `@NAME MESSAGE` | Request one read-only reply using the latest shared discussion | `@developer How will you preserve invalid stored data?` |
 
-For ordered implementation and review, use `/task`; direct tasks are independent. Discussions and mentions are read-only. Crew Chat shows actual workflow assignments, handoffs, and bounded result previews; full results remain in individual chats and `/queue show ID`. Handoffs and retries can trigger edits; inspect changes first.
+For ordered implementation and review, use `/task`; direct tasks are independent. Discussions and mentions are read-only. Crew Chat shows readable plans and full teammate responses with speaker labels. Activity shows workflow IDs, task status and handoff records; raw tasks remain available through `/queue show ID`. Handoffs and retries can trigger edits; inspect changes first.
 
 ## Conversations, isolated work, and automation
 
@@ -218,6 +218,7 @@ To change the saved team, customize the current crew and run `/preset save studi
 | --- | --- | --- |
 | `/clear` | Archive and clear selected transcript, retaining Codex session memory | `/clear` |
 | `/new` | Archive and clear selected transcript and start a fresh Codex session | `/new` |
+| `/new-all` | Open fresh conversations for every teammate and Crew Chat; preserve previous history. Finish or stop active work first. | `/new-all` |
 | `/archives` | List recoverable conversation/crew snapshots | `/archives` |
 | `/archives restore ARCHIVE_ID [NAME]` | Restore a conversation as a teammate; choose a new name for a copy | `/archives restore ARCHIVE_ID recovered-dev` |
 | `/undo` | Restore latest undoable conversation or crew change | `/undo` |

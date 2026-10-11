@@ -76,6 +76,7 @@ export const HELP = [
   'CONVERSATION AND VIEWS',
   '/clear                        Clear local transcript; keep Codex session',
   '/new                          Clear transcript and start fresh session',
+  '/new-all                      Fresh conversations for every teammate and Crew Chat',
   '/status                       Show the whole crew\'s current status',
   '/context [on|off|status]       Control local context clipping; inspect character counts',
   '/markdown [on|off]            Save task and discussion Markdown in docs/pongkan-docs',
@@ -332,7 +333,8 @@ export function execute(app, line) {
     const options = { sourceConversationId: command === '/crew-task' || app.view === 'group' ? crew.state.activeGroupConversation : null };
     const opened = flow => {
       if (flow.workspace) crew.conversations.open(flow.conversations[crew.leadName]);
-      chat(crew.leadName);
+      if (command === '/crew-task') { app.view = 'group'; app.panel = null; app.scroll = 0; }
+      else chat(crew.leadName);
       app.notice = `Workflow ${flow.id} created${flow.workspace ? ` in ${flow.branch}` : ''}${crew.queue.paused ? '; /queue resume to start' : ''}.`;
     };
     if (isolated) return crew.workflows.startIsolated(goal, options).then(opened);
@@ -418,6 +420,17 @@ export function execute(app, line) {
       else { const name = target || app.selected; crew.member(name); delete crew.state.activeConversations[name]; chat(name); }
       crew.save(); app.panel = null; app.scroll = 0;
     } else throw new Error('Use /conversation list|new NAME|group TITLE|open ID|archive ID|restore ID|default [NAME|group].');
+  } else if (command === '/new-all') {
+    if (parts.length) throw new Error('Use /new-all without arguments.');
+    if (crew.running.size || crew.state.tasks.some(task => !TERMINAL.has(task.status)) ||
+        crew.state.workflows.some(flow => !TERMINAL.has(flow.status)) ||
+        crew.state.discussions.some(discussion => discussion.status === 'working')) {
+      throw new Error('Finish or cancel active work first. Use /stop all before /new-all.');
+    }
+    for (const member of crew.state.members) crew.conversations.create(member.name, 'New conversation');
+    crew.conversations.create('group', 'New Crew Chat');
+    app.view = 'group'; app.panel = null; app.scroll = 0; app.activityScroll = 0;
+    app.notice = 'Fresh conversations ready for all teammates and Crew Chat. Previous conversations remain saved.';
   } else if (command === '/new' || command === '/clear') {
     if (app.view === 'group') {
       if (command === '/clear') throw new Error('Use /new to start a blank Crew Chat. Previous discussions remain saved.');

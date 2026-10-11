@@ -15,6 +15,50 @@ function folder(t) {
   t.after(() => rmSync(path, { recursive: true, force: true }));
   return path;
 }
+
+test('new Crew Chat replies and progress remain visible after a long older workflow', t => {
+  const crew = new Crew(folder(t));
+  const discussion = { id: 'intro', createdAt: 200, status: 'working', messages: [
+    { role: 'user', speaker: 'you', text: 'Introduce yourselves.' },
+    { role: 'assistant', speaker: 'chief', text: 'Hello, I coordinate the crew.' },
+  ] };
+  crew.state.discussions.push(discussion);
+  crew.state.workflows.push({ id: 'older', lead: 'chief', text: 'Old README work', createdAt: 100 });
+  crew.state.tasks.push({ id: 'summary', workflowId: 'older', member: 'chief', kind: 'summary',
+    status: 'completed', text: 'Summarize old work', result: 'Historical summary. '.repeat(40), createdAt: 101 },
+  { id: 'intro-turn', discussionId: 'intro', member: 'developer', status: 'running' });
+  crew.member('developer').status = 'working';
+  crew.member('developer').progress = { phase: 'thinking', channel: 'group' };
+  const output = screen(crew, 'chief', '', '', 100, 30, 0, null, { view: 'group' });
+  assert.match(output, /Hello, I coordinate the crew/);
+  assert.match(output, /Developer.*Thinking/);
+  assert.match(output, /Replies appear here/);
+  discussion.status = 'completed';
+  const finished = screen(crew, 'chief', '', '', 100, 30, 0, null, { view: 'group' });
+  assert.match(finished, /Hello, I coordinate the crew/);
+  crew.state.tasks.push({ id: 'new-plan', workflowId: 'older', member: 'chief', kind: 'work',
+    status: 'completed', text: 'New work', result: 'New workflow reply', createdAt: 300 });
+  const later = screen(crew, 'chief', '', '', 100, 60, 0, null, { view: 'group' });
+  assert.ok(later.indexOf('Hello, I coordinate the crew') < later.indexOf('New workflow reply'));
+});
+
+test('Crew Chat shows full workflow replies and readable plans while Activity keeps task records', t => {
+  const crew = new Crew(folder(t));
+  crew.state.workflows.push({ id: 'flow-chat', lead: 'chief', text: 'Build the page', createdAt: 1 });
+  const plan = JSON.stringify({ steps: [{ member: 'developer', task: 'Build the page' }], reviewer: 'reviewer' });
+  crew.state.tasks.push({ id: 'plan-chat', workflowId: 'flow-chat', member: 'chief', kind: 'plan',
+    status: 'completed', text: 'PONGKAN_PLAN internal instructions', result: plan, createdAt: 2 },
+  { id: 'work-chat', workflowId: 'flow-chat', member: 'developer', kind: 'work', status: 'completed',
+    text: 'Internal assignment', result: 'Implemented the page. '.repeat(50) + 'FINAL RESPONSE MARKER', createdAt: 3 });
+  const group = screen(crew, 'chief', '', '', 110, 100, 0, null, { view: 'group' });
+  assert.match(group, /Proposed plan/);
+  assert.match(group, /Developer/);
+  assert.match(group, /FINAL RESPONSE MARKER/);
+  assert.doesNotMatch(group, /Workflow flow-chat|task work-chat|PONGKAN_PLAN|Internal assignment|WORKFLOW HANDOFFS/);
+  const activity = screen(crew, 'chief', '', '', 110, 100, 0, null, { view: 'activity' });
+  assert.match(activity, /Workflow flow-chat/);
+  assert.match(activity, /task work-chat/);
+});
 test('folder snapshots show text additions, deletions and modifications without Git', t => {
   const path = folder(t);
   writeFileSync(join(path, 'hello.txt'), 'before\n');

@@ -78,7 +78,11 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
       if (failed) content.push(...wrap(`${failed.member}: ${failed.error}`, readingWidth).map(text => row(text, 'system')));
       if (discussion.status === 'interrupted') content.push(row('App restarted. Start again with /discuss TOPIC.', 'muted'));
     }
-    content.push(row(''), ...workflowFeed(crew, readingWidth, crew.state.activeGroupConversation));
+    // Keep prior handoffs above the current discussion so the bottom follows replies.
+    const startedAt = discussion?.createdAt ?? Infinity;
+    content = [...workflowFeed(crew, readingWidth, crew.state.activeGroupConversation, { before: startedAt, conversation: true }),
+      row(''), ...content, row(''),
+      ...workflowFeed(crew, readingWidth, crew.state.activeGroupConversation, { since: startedAt, conversation: true })];
   }
   if (view === 'activity') {
     const events = crew.activityEvents?.length ? crew.activityEvents : crew.activity.map(text => ({ text }));
@@ -88,6 +92,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
       return [row(`${stamp}  ${style.label}`, style.tone), ...wrap(event.text, contentWidth - 4).map(text => row(text, style.tone)),
         ...(event.detail ? wrap(event.detail, contentWidth - 6, true).map(text => row('  ' + text, 'muted')) : []), row('')];
     });
+    content = [...workflowFeed(crew, readingWidth), ...content];
     if (!content.length) content = [row('No team activity yet.', 'heading'), row(''), row('Tasks, commands, searches and handoffs will appear here.', 'muted')];
   }
   const offset = view === 'activity' ? activityScroll : scroll;

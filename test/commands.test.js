@@ -13,6 +13,46 @@ function setup(t) {
   const crew = new Crew(folder);
   return { crew, selected: 'chief', panel: null, notice: '', scroll: 0, send() {}, quit() {} };
 }
+
+test('new-all opens fresh saved chats for the whole crew and preserves previous history across restart', t => {
+  const app = setup(t);
+  app.view = 'activity'; app.selected = 'developer';
+  app.crew.member('chief').messages.push({ role: 'user', text: 'Keep legacy history' });
+  const old = app.crew.conversations.create('developer', 'Earlier work');
+  old.messages.push({ role: 'assistant', text: 'Keep named history' }); old.threadId = 'old-session';
+  const oldGroup = app.crew.conversations.create('group', 'Earlier discussion');
+  app.crew.discussions.newConversation();
+  execute(app, '/new-all');
+  assert.equal(app.view, 'group');
+  assert.equal(app.selected, 'developer');
+  assert.notEqual(app.crew.state.activeGroupConversation, oldGroup.id);
+  assert.equal(app.crew.discussions.current, undefined);
+  for (const member of app.crew.state.members) {
+    const chat = app.crew.chatMember(member.name);
+    assert.deepEqual(chat.messages, []);
+    assert.equal(chat.threadId, null);
+    assert.ok(app.crew.state.activeConversations[member.name]);
+  }
+  const restored = new Crew(app.crew.folder);
+  assert.equal(restored.member('chief').messages[0].text, 'Keep legacy history');
+  assert.equal(restored.conversations.get(old.id).messages[0].text, 'Keep named history');
+  assert.deepEqual(restored.state.activeConversations, app.crew.state.activeConversations);
+  assert.doesNotMatch(screen(restored, 'developer', '', '', 100, 30, 0, null, { view: 'group' }), /Earlier discussion/);
+});
+
+test('new-all rejects arguments and unfinished work before changing any conversations', t => {
+  const app = setup(t);
+  const before = JSON.stringify(app.crew.state);
+  assert.throws(() => execute(app, '/new-all extra'), /Use \/new-all/);
+  assert.equal(JSON.stringify(app.crew.state), before);
+  for (const status of ['queued', 'running', 'waiting']) {
+    app.crew.state.tasks.push({ id: 'busy', member: 'chief', status });
+    const busy = JSON.stringify(app.crew.state);
+    assert.throws(() => execute(app, '/new-all'), /finish|stop|cancel/i);
+    assert.equal(JSON.stringify(app.crew.state), busy);
+    app.crew.state.tasks.pop();
+  }
+});
 test('question mark and help open complete paged help without sending a prompt', t => {
   const app = setup(t);
   app.send = () => assert.fail('help must not call Codex');

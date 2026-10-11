@@ -17,7 +17,7 @@ export function completions(input, names, presetNames = ['default', 'web', 'mobi
   if (modelTarget) return [...names, 'all'].filter(name => name.startsWith(modelTarget[2])).map(name => `${modelTarget[1]} ${name}`);
   const match = input.match(/^(\/(?:chat|send|handoff|stop)|\/crew (?:remove|rename|role|access|info|chat))\s+(\S*)$/);
   if (match) return [...names, ...(match[1] === '/stop' ? ['all'] : [])].filter(n => n.startsWith(match[2])).map(n => `${match[1]} ${n}`);
-  return COMMANDS.filter(command => command.startsWith(input));
+  return [...COMMANDS, '/new-all'].filter(command => command.startsWith(input));
 }
 export function helpSearch(query) {
   const needle = query.trim().toLowerCase();

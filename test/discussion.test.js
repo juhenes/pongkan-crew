@@ -112,12 +112,14 @@ test('crew-task requires saved discussion and uses it from any tab with an optio
   execute(app, '/crew-task');
   assert.match(crew.state.workflows.at(-1).text, /Implement the agreed plan/);
   assert.match(crew.state.workflows.at(-1).text, /Use orange links with keyboard support/);
-  assert.equal(app.selected, crew.leadName);
-  assert.equal(app.view, 'chat');
+  assert.equal(app.selected, 'developer');
+  assert.equal(app.view, 'group');
   app.view = 'activity';
   execute(app, '/crew-task Only implement keyboard support');
   assert.match(crew.state.workflows.at(-1).text, /^Only implement keyboard support/);
   assert.match(crew.state.workflows.at(-1).text, /Use orange links/);
+  assert.equal(app.view, 'group');
+  app.view = 'chat';
   execute(app, '/task A separate goal');
   assert.equal(crew.state.workflows.at(-1).text, 'A separate goal');
   app.view = 'group';

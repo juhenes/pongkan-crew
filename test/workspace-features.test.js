@@ -20,16 +20,20 @@ function setup(t, runner = async (args, prompt, event) => {
   return { crew, selected: 'developer', view: 'group', scroll: 0 };
 }
 
-test('Crew Chat displays real workflow handoffs and results without copying records', async t => {
+test('Crew Chat displays replies and Activity displays workflow handoffs without copying records', async t => {
   const { crew } = setup(t);
   const flow = crew.workflows.start('Improve navigation');
   await crew.workflows.settled(flow.id);
   const before = JSON.stringify(crew.state);
   const shown = screen(crew, 'developer', '', '', 140, 80, 0, null, { view: 'group' });
-  assert.match(shown, /Chief → Developer/);
-  assert.match(shown, /Developer → Reviewer/);
+  assert.match(shown, /Proposed plan/);
+  assert.match(shown, /Developer/);
   assert.match(shown, /Verified keyboard navigation/);
-  assert.match(shown, new RegExp(flow.id));
+  assert.doesNotMatch(shown, new RegExp(flow.id));
+  const activity = screen(crew, 'developer', '', '', 140, 100, 0, null, { view: 'activity' });
+  assert.match(activity, /Chief → Developer/);
+  assert.match(activity, /Developer → Reviewer/);
+  assert.match(activity, new RegExp(flow.id));
   assert.equal(JSON.stringify(crew.state), before);
 });
 
