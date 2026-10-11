@@ -158,7 +158,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   }
   output.push(paint('─'.repeat(width), 'muted'), '',
     ...composer.lines.map(line => paint(fit(line, width), 'user')),
-    '', paint(fit(notice || (composer.totalRows > 1 ? `Input ${composer.hiddenBefore + 1}-${composer.hiddenBefore + composer.lines.length}/${composer.totalRows} · Up/Down Prompt history · Enter Send` : view === 'group' ? 'F2 Next tab  ·  @NAME Reply  ·  /discuss TOPIC  ·  Ctrl+K Stop' : view === 'activity' ? 'F2 Next tab  ·  Shift+F2 Previous  ·  ? Help  ·  Ctrl+C Quit' : '? Help  ·  F2 Next tab  ·  Tab Teammates / Crew Chat  ·  Enter Send  ·  Ctrl+K Stop'), width), 'muted'),
+    '', '', paint(fit(notice || (composer.totalRows > 1 ? `Input ${composer.hiddenBefore + 1}-${composer.hiddenBefore + composer.lines.length}/${composer.totalRows} · Up/Down Prompt history · Enter Send` : view === 'group' ? 'F2 Next tab     |     @NAME Reply     |     /discuss TOPIC     |     Ctrl+K Stop' : view === 'activity' ? 'F2 Next tab  ·  Shift+F2 Previous  ·  ? Help  ·  Ctrl+C Quit' : '? Help  ·  F2 Next tab  ·  Tab Teammates / Crew Chat  ·  Enter Send  ·  Ctrl+K Stop'), width), 'muted'),
     paint(fit(cliTip(), width), 'muted'), '');
   return output.join('\n');
 }

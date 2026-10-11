@@ -79,7 +79,7 @@ async function main() {
     const composer = layoutInput(input.join(''), cursor, promptLabel, width, Math.max(1, Math.min(5, Math.floor(rows / 5))));
     const content = screen(crew, app.selected, input.join(''), app.notice, columns, rows, app.scroll, app.panel,
       { color: !('NO_COLOR' in process.env) && process.env.TERM !== 'dumb', view: app.view, activityScroll: app.activityScroll, composer });
-    const inputRow = content.split('\n').length - composer.lines.length - 2 + composer.cursorRow;
+    const inputRow = content.split('\n').length - composer.lines.length - 4 + composer.cursorRow;
     const inputColumn = composer.cursorColumn + 1;
     outputBlocked = terminal.draw(content, inputRow, inputColumn, `${columns}x${rows}`) === false;
   });
