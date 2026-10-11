@@ -22,6 +22,9 @@ Plain text goes to the selected teammate in Chat or continues the shared read-on
 | --- | --- | --- |
 | `/chat [NAME]` | Open Chat and optionally select a teammate | `/chat chief` |
 | `/crew chat NAME` | Alias for selecting a teammate's Chat | `/crew chat developer` |
+| `/personality` | List chat styles and each teammate's current style | `/personality` |
+| `/personality [NAME\|all] STYLE` | Change the selected teammate, a named teammate, or the whole crew's chat tone | `/personality developer jokester` |
+| `/personality reset [NAME]` | Restore neutral style for a teammate or the selected teammate | `/personality reset` |
 | `/next` | Cycle forward through teammates and Crew Chat | `/next` |
 | `/prev` | Cycle backward through teammates and Crew Chat | `/prev` |
 | `/task TEXT` | Lead plans sequential assignments, independent review, and summary | `/task Add todo filters, verify them, and review the changes.` |

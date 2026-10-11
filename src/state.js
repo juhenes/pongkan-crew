@@ -1,5 +1,6 @@
 import { MAX_TEAM } from './roles.js';
 import { MODEL_ID, EFFORTS } from './models.js';
+import { PERSONALITIES } from './personality.js';
 const NAME = /^[a-z][a-z0-9-]{0,31}$/;
 const ID = /^[a-f0-9]{8}$/;
 const TASK_STATUS = new Set(['queued', 'running', 'waiting', 'completed', 'failed', 'cancelled', 'interrupted']);
@@ -12,6 +13,7 @@ function membersValid(members) {
     members.every(m => m && NAME.test(m.name) && typeof m.role === 'string' && typeof m.writable === 'boolean' &&
       (m.model === undefined || (typeof m.model === 'string' && MODEL_ID.test(m.model))) &&
       (m.reasoningEffort === undefined || EFFORTS.has(m.reasoningEffort)) &&
+      (m.personality === undefined || Object.hasOwn(PERSONALITIES, m.personality)) &&
       (m.threadId === null || typeof m.threadId === 'string') && Array.isArray(m.messages) &&
       m.messages.every(msg => msg && ['user', 'assistant', 'system'].includes(msg.role) && typeof msg.text === 'string'));
 }
@@ -50,7 +52,8 @@ export function validateState(state) {
   if (state.activePreset != null && (typeof state.activePreset !== 'string' || !NAME.test(state.activePreset))) invalid();
   if (new Set(state.presets.map(p => p?.name)).size !== state.presets.length || state.presets.some(p => !p || !NAME.test(p.name) ||
       ['default', 'web', 'mobile', 'social', 'content'].includes(p.name) || typeof p.title !== 'string' || !Array.isArray(p.members) || p.members.length < 2 || p.members.length > MAX_TEAM ||
-      new Set(p.members.map(m => m?.name)).size !== p.members.length || p.members.some(m => !m || !NAME.test(m.name) || typeof m.role !== 'string' || typeof m.writable !== 'boolean') ||
+      new Set(p.members.map(m => m?.name)).size !== p.members.length || p.members.some(m => !m || !NAME.test(m.name) || typeof m.role !== 'string' || typeof m.writable !== 'boolean' ||
+        m.personality !== undefined && !Object.hasOwn(PERSONALITIES, m.personality)) ||
       !coordinationValid(p, p.members))) invalid();
   if (state.archives.some(a => a?.kind === 'preset' && a.coordination != null && !coordinationValid(a.coordination, a.members || []))) invalid();
   if (state.discussions.some(d => !d || !ID.test(d.id) || !['working', 'completed', 'failed', 'cancelled', 'interrupted'].includes(d.status) ||

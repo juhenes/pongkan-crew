@@ -40,7 +40,7 @@ export class Presets {
     if (this.crew.member(reviewerName).writable || leadName === reviewerName) throw new Error('Choose a separate read-only reviewer.');
     if (this.crew.state.members.length > MAX_TEAM) throw new Error(`Presets support up to ${MAX_TEAM} teammates.`);
     const preset = { name, title: this.crew.state.presets.find(p => p.name === name)?.title || name, lead: leadName, reviewer: reviewerName,
-      members: this.crew.state.members.map(({ name, role, writable }) => ({ name, role, writable })) };
+      members: this.crew.state.members.map(({ name, role, writable, personality }) => ({ name, role, writable, ...(personality ? { personality } : {}) })) };
     this.crew.state.presets = this.crew.state.presets.filter(p => p.name !== name);
     this.crew.state.presets.push(preset); this.crew.save();
   }

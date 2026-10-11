@@ -5,6 +5,7 @@ import { directMessages } from './conversations.js';
 import { spacedRoleText } from './role-display.js';
 import { readModelCatalog, readModelDefaults, modelLabel, validateModelChoice, modelCatalogLines } from './models.js';
 import { steer } from './steering.js';
+import { PERSONALITIES } from './personality.js';
 export const HELP = [
   'Enter one command at a time. UPPERCASE = replace with a value; [VALUE] = optional.',
   'Names below use the default crew; /crew list shows your actual names.',
@@ -32,6 +33,9 @@ export const HELP = [
   '/crew role NAME ROLE          Change instructions for future turns',
   '/crew access NAME read|write  Set permissions; reviewer stays read-only',
   '/crew info [NAME]             Show role, permissions and session', '',
+  '/personality                  List styles and current teammate settings',
+  '/personality [NAME] STYLE     Set selected teammate or NAME; use all for crew',
+  '/personality reset [NAME]     Restore neutral style', '',
   'CHAT AND TASKS',
   '/discuss TOPIC                Two read-only crew rounds and lead summary',
   '/group                       Open shared Crew Chat',
@@ -217,6 +221,34 @@ export function execute(app, line) {
       const member = roleMember(key); const r = ROLES[key];
       panel(`ROLE ${key}`, [r.title, '', `Default access: ${member.writable ? 'write' : 'read-only'}`, '', '', spacedRoleText(member.role)]);
     } else throw new Error('Use /roles list [QUERY] or /roles show ROLE.');
+  }
+  else if (command === '/personality') {
+    if (!parts.length || parts[0] === 'list') {
+      if (parts.length > 1) throw new Error('Use /personality or /personality list.');
+      panel('CHAT PERSONALITIES', [
+        ...Object.entries(PERSONALITIES).map(([style, description]) =>
+          `${style}${style === 'neutral' ? ' (default)' : ''} — ${description}`), '',
+        ...crew.state.members.map(member => `${member.name}: ${member.personality || 'neutral'}`), '',
+        'Set one with /personality NAME STYLE. Example: /personality developer jokester.',
+      ]);
+    } else if (parts[0] === 'reset') {
+      if (parts.length > 2) throw new Error('Use /personality reset [NAME].');
+      const member = crew.member(parts[1] || app.selected);
+      delete member.personality;
+      crew.save(); app.panel = null;
+      app.notice = `${member.name} uses the neutral chat style.`;
+    } else {
+      const selectedStyle = parts.length === 1 && Object.hasOwn(PERSONALITIES, parts[0]);
+      const targetName = selectedStyle ? app.selected : parts[0];
+      const style = selectedStyle ? parts[0] : parts[1];
+      if ((!selectedStyle && parts.length !== 2) || !Object.hasOwn(PERSONALITIES, style)) {
+        throw new Error(`Use /personality [NAME|all] STYLE. Styles: ${Object.keys(PERSONALITIES).join(', ')}.`);
+      }
+      const members = targetName === 'all' ? crew.state.members : [crew.member(targetName)];
+      for (const member of members) member.personality = style;
+      crew.save(); app.panel = null;
+      app.notice = `${targetName === 'all' ? 'All teammates' : members[0].name} chat style set to ${style}. Roles, work, and permissions are unchanged.`;
+    }
   }
   else if (command === '/preset') {
     const [action = 'list', name, lead, reviewer, ...extra] = parts;
