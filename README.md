@@ -71,7 +71,8 @@ GitHub commands require an authenticated GitHub CLI (`gh`). They do not automati
 | --- | --- |
 | Tab / Shift+Tab | Cycle teammates and Crew Chat |
 | F2 / Shift+F2 | Switch views |
-| PgUp / PgDn | Scroll |
+| Mouse wheel / PgUp / PgDn | Scroll responses, activity or panels |
+| Up / Down | Previous / next prompt; return to your new draft |
 | Shift+Right | Fill in the answer command for a waiting question; press again to cycle |
 | Enter | Send |
 | Esc | Close a panel or clear input |
@@ -79,7 +80,7 @@ GitHub commands require an authenticated GitHub CLI (`gh`). They do not automati
 | Ctrl+K | Stop selected work |
 | Ctrl+C | Exit and stop work |
 
-Mouse-wheel scrolling is not supported. Stopping work does not undo file edits.
+Mouse wheel scrolls responses, activity and panels while the input stays fixed. Up/Down previews submitted prompts and restores your new draft after the newest prompt. Stopping work does not undo file edits.
 
 ## Example: local todo website
 

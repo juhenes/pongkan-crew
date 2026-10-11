@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { emitKeypressEvents } from 'node:readline';
+import { PassThrough } from 'node:stream';
 
 import { Crew } from './crew.js';
 import { screen } from './ui.js';
 import { execute, cycle, HELP } from './commands.js';
 import { acquireLock, checkRuntime } from './runtime.js';
 import { completions } from './controls.js';
-import { layoutInput } from './input.js';
-import { MOUSE_OFF, scrollView } from './scroll.js';
+import { layoutInput, PromptHistory } from './input.js';
+import { MOUSE_ON, MOUSE_OFF, scrollView, terminalInput } from './scroll.js';
+import { enableWindowsMouse } from './windows-input.js';
 import { runWorker } from './scheduler.js';
 import { answerShortcut } from './answer-shortcut.js';
+import { TerminalRenderer, scheduleRender } from './terminal-renderer.js';
 
 
 const args = process.argv.slice(2);
@@ -39,8 +42,8 @@ async function main() {
   catch (error) { release(); throw error; }
   const app = { crew, selected: crew.state.members[0].name, notice: '', scroll: 0, panel: null, view: 'chat', activityScroll: 0 };
   let input = [], cursor = 0, closing = false;
-  const history = [];
-  let historyIndex = 0, draft = '';
+  const history = new PromptHistory();
+  let restoreMouse = () => {};
   if (preview) { console.log(screen(crew, app.selected, '', 'Preview — no agents running')); release(); return; }
   console.log('Checking Codex, login, folder access and saved state...');
   const diagnostics = await checkRuntime();
@@ -60,8 +63,12 @@ async function main() {
     return;
   }
   if (crew.queue.paused) app.notice = 'Saved tasks are paused. /queue list to inspect; /queue resume to continue.';
-  const render = () => {
+  const terminal = new TerminalRenderer(process.stdout);
+  let outputBlocked = false;
+  process.stdout.on('drain', () => { outputBlocked = false; render(); });
+  const render = scheduleRender(() => {
     if (closing) return;
+    if (outputBlocked) return;
     const columns = process.stdout.columns || 100, rows = process.stdout.rows || 30;
     const width = Math.max(30, columns - 1);
     const promptLabel = app.view === 'activity' ? 'activity' : app.view === 'group' ? 'crew' : app.selected;
@@ -70,8 +77,8 @@ async function main() {
       { color: !('NO_COLOR' in process.env) && process.env.TERM !== 'dumb', view: app.view, activityScroll: app.activityScroll, composer });
     const inputRow = content.split('\n').length - composer.lines.length - 2 + composer.cursorRow;
     const inputColumn = composer.cursorColumn + 1;
-    process.stdout.write('\x1b[?25l\x1b[H\x1b[2J' + content + `\x1b[${inputRow};${inputColumn}H\x1b[?25h`);
-  };
+    outputBlocked = terminal.draw(content, inputRow, inputColumn, `${columns}x${rows}`) === false;
+  });
   app.send = (name, text) => {
     const task = crew.queue.enqueue(name, text);
     app.notice = `Task ${task.id}: ${task.status}${crew.queue.paused ? '; /queue resume to start' : ''}`;
@@ -80,8 +87,10 @@ async function main() {
   app.quit = async () => {
     if (closing) return;
     closing = true;
+    render.cancel();
     clearInterval(ticker);
     process.stdin.setRawMode(false); process.stdin.pause();
+    restoreMouse();
     process.stdout.write(MOUSE_OFF + '\x1b[?25h\x1b[?1049l');
     try { await crew.close(); } finally { release(); }
   };
@@ -92,9 +101,19 @@ async function main() {
   };
   process.stdout.write(MOUSE_OFF + '\x1b[?1049h');
   process.stdin.setRawMode(true);
-  emitKeypressEvents(process.stdin);
+  try {
+    restoreMouse = enableWindowsMouse();
+    process.stdout.write(MOUSE_ON);
+  } catch (error) { app.notice = `Mouse unavailable: ${error.message}. Use PgUp/PgDn to scroll.`; }
+  const keyboard = new PassThrough();
+  keyboard.setEncoding('utf8');
+  emitKeypressEvents(keyboard);
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', terminalInput(text => keyboard.write(text), amount => {
+    scrollView(app, amount); render();
+  }));
   process.stdin.resume();
-  process.stdin.on('keypress', (str, key = {}) => {
+  keyboard.on('keypress', (str, key = {}) => {
     try {
       if (key.ctrl && key.name === 'c') { void app.quit(); return; }
       if (key.name === 'f1' || (str === '?' && input.length === 0)) dispatch('/help');
@@ -110,10 +129,7 @@ async function main() {
         } else cycle(app, key.shift ? -1 : 1);
       } else if (key.name === 'up' || key.name === 'down') {
         const delta = key.name === 'up' ? -1 : 1;
-        const inputLayout = layoutInput(input.join(''), cursor, app.view === 'activity' ? 'activity' : app.view === 'group' ? 'crew' : app.selected, Math.max(30, (process.stdout.columns || 100) - 1));
-        if (app.panel) app.panel.offset = Math.max(0, app.panel.offset + delta);
-        else if (inputLayout.totalRows > 1) cursor = delta < 0 ? inputLayout.up : inputLayout.down;
-        else scrollView(app, -delta);
+        setInput(history.move(delta, input.join('')));
       } else if (key.name === 'pageup' || key.name === 'pagedown') {
         scrollView(app, key.name === 'pageup' ? 10 : -10);
       } else if (key.shift && key.name === 'right') setInput(answerShortcut(app, input.join('')));
@@ -124,9 +140,7 @@ async function main() {
       else if (key.name === 'return') {
         const line = input.join('').trim(); setInput('');
         if (line) {
-          if (history.at(-1) !== line) history.push(line);
-          if (history.length > 100) history.shift();
-          historyIndex = history.length; draft = '';
+          history.add(line);
           dispatch(line);
         }
       } else if (key.name === 'backspace') { if (cursor > 0) input.splice(--cursor, 1); }
@@ -137,11 +151,9 @@ async function main() {
         const keep = Array.from(before.replace(/\s*\S+\s*$/, '')).length;
         input.splice(keep, cursor - keep); cursor = keep;
       } else if (key.ctrl && (key.name === 'p' || key.name === 'n')) {
-        if (historyIndex === history.length) draft = input.join('');
-        historyIndex = Math.max(0, Math.min(history.length, historyIndex + (key.name === 'p' ? -1 : 1)));
-        setInput(historyIndex === history.length ? draft : history[historyIndex] || '');
+        setInput(history.move(key.name === 'p' ? -1 : 1, input.join('')));
       } else if (key.ctrl && key.name === 'k') dispatch('/stop');
-      else if (key.ctrl && key.name === 'l') { /* redraw below */ }
+      else if (key.ctrl && key.name === 'l') { terminal.size = null; }
       else if (!key.ctrl && !key.meta && str && !/[\x00-\x1f\x7f]/.test(str)) {
         const chars = Array.from(str); input.splice(cursor, 0, ...chars); cursor += chars.length;
       }

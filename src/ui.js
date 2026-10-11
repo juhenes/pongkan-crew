@@ -43,7 +43,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   const waiting = crew.state.tasks?.filter(task => task.status === 'waiting') || [];
   if (waiting.length) notice = `${waiting.length} question(s) waiting — Shift+Right to answer | /questions list`;
   const row = (text, tone = 'body') => ({ text, tone });
-  const conversation = displayMessages(member, crew.state.tasks, crew.state.workflows).flatMap(m => {
+  const conversation = (view === 'chat' && !panel ? displayMessages(member, crew.state.tasks, crew.state.workflows) : []).flatMap(m => {
     const label = m.role === 'user' ? 'You' : m.role === 'assistant' ? nameLabel(selected) : 'System';
     const body = messageBody(m, readingWidth, crew.folder, selected);
     return [row(label, m.role), ...body, row(''), row('')];
@@ -136,6 +136,6 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   }
   output.push(paint('─'.repeat(width), 'muted'), '',
     ...composer.lines.map(line => paint(fit(line, width), 'user')),
-    '', paint(fit(notice || (composer.totalRows > 1 ? `Input ${composer.hiddenBefore + 1}-${composer.hiddenBefore + composer.lines.length}/${composer.totalRows} · Up/Down Move cursor · Enter Send` : view === 'group' ? 'F2 Next tab  ·  @NAME Reply  ·  /discuss TOPIC  ·  Ctrl+K Stop' : view === 'activity' ? 'F2 Next tab  ·  Shift+F2 Previous  ·  ? Help  ·  Ctrl+C Quit' : '? Help  ·  F2 Next tab  ·  Tab Teammates / Crew Chat  ·  Enter Send  ·  Ctrl+K Stop'), width), 'muted'), '');
+    '', paint(fit(notice || (composer.totalRows > 1 ? `Input ${composer.hiddenBefore + 1}-${composer.hiddenBefore + composer.lines.length}/${composer.totalRows} · Up/Down Prompt history · Enter Send` : view === 'group' ? 'F2 Next tab  ·  @NAME Reply  ·  /discuss TOPIC  ·  Ctrl+K Stop' : view === 'activity' ? 'F2 Next tab  ·  Shift+F2 Previous  ·  ? Help  ·  Ctrl+C Quit' : '? Help  ·  F2 Next tab  ·  Tab Teammates / Crew Chat  ·  Enter Send  ·  Ctrl+K Stop'), width), 'muted'), '');
   return output.join('\n');
 }

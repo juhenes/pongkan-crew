@@ -1,6 +1,23 @@
 import { clean, cellWidth, fitText } from './markdown.js';
 const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 
+export class PromptHistory {
+  entries = [];
+  index = 0;
+  draft = '';
+  add(text) {
+    if (this.entries.at(-1) !== text) this.entries.push(text);
+    if (this.entries.length > 100) this.entries.shift();
+    this.index = this.entries.length;
+    this.draft = '';
+  }
+  move(delta, input) {
+    if (this.index === this.entries.length) this.draft = input;
+    this.index = Math.max(0, Math.min(this.entries.length, this.index + delta));
+    return this.index === this.entries.length ? this.draft : this.entries[this.index];
+  }
+}
+
 export function layoutInput(text, cursor, label, width, maxRows = 5) {
   text = clean(text);
   const chars = Array.from(text);

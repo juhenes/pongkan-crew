@@ -45,3 +45,11 @@ test('wrapped composer fits without pushing the footer out of the screen', () =>
   assert.match(long, /Input .*Up\/Down/);
   assert.ok(long.split('\n').every(line => cellWidth(line) <= 69));
 });
+
+test('activity and crew views do not read the hidden direct transcript', () => {
+  const member = { name: 'chief', role: 'Lead', status: 'ready',
+    get messages() { throw new Error('Hidden transcript was rendered'); } };
+  const crew = { member: () => member, state: { members: [member] }, folder: '.', activity: [] };
+  assert.match(screen(crew, 'chief', '', '', 80, 30, 0, null, { view: 'activity' }), /No team activity/);
+  assert.match(screen(crew, 'chief', '', '', 80, 30, 0, null, { view: 'group' }), /Start a crew discussion/);
+});

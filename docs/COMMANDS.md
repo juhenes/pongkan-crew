@@ -261,7 +261,7 @@ Choose IDs and effort levels from `/model list`; cached entries may be unavailab
 | Tab / Shift+Tab | Cycle teammates and Crew Chat; complete command/mention input | Type `/chat dev`, then Tab |
 | F2 / Shift+F2 | Cycle views forward/backward | Chat → Crew Chat → Activity |
 | Escape | Close panel, return from group/activity to Chat, or clear Chat input | Press Esc |
-| Up / Down | Move through wrapped input; otherwise scroll content/panel | Press Up to inspect earlier content |
+| Up / Down | Preview previous / next submitted prompt; return to the new draft | Press Up to recall a prompt, then Down to restore the draft |
 | PgUp / PgDn | Scroll history or an open panel | Press PgUp while work runs |
 | Left / Right | Move input cursor | Edit a word in a prompt |
 | Home / End | Move to beginning/end of complete input | Press Home |
@@ -273,7 +273,7 @@ Choose IDs and effort levels from `/model list`; cached entries may be unavailab
 | Ctrl+L | Redraw screen | Refresh after resizing |
 | Ctrl+C | Stop work and exit | Close the CLI |
 
-Mouse/wheel handling is disabled; use keyboard scrolling. Slash-command and mention completion take priority over Tab navigation when input begins with `/` or `@`.
+Mouse wheel scrolls responses, activity and panels while the composer stays fixed. PgUp/PgDn also scroll content. Slash-command and mention completion take priority over Tab navigation when input begins with `/` or `@`.
 
 ## Terminal launch commands
 
