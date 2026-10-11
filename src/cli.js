@@ -88,6 +88,7 @@ async function main() {
     app.notice = `Task ${task.id}: ${task.status}${crew.queue.paused ? '; /queue resume to start' : ''}`;
   };
   let ticker;
+  let nextTipRotation = Date.now() + 30000;
   app.quit = async () => {
     if (closing) return;
     closing = true;
@@ -185,6 +186,7 @@ async function main() {
   ticker = setInterval(() => {
     try { crew.scheduler.tick(); } catch (error) { app.notice = error.message; }
     if (crew.running.size || app.panel?.getLines) render();
+    else if (Date.now() >= nextTipRotation) { nextTipRotation = Date.now() + 30000; render(); }
   }, 1000);
   ticker.unref();
   render();

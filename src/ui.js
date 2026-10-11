@@ -8,6 +8,23 @@ export { clean } from './markdown.js';
 const wrap = wrapText;
 const nameLabel = name => name.charAt(0).toUpperCase() + name.slice(1).toLowerCase();
 const renderedMessages = new WeakMap();
+const CLI_TIPS = [
+  '/help QUERY searches the command guide.',
+  '/new starts a fresh chat and keeps the old conversation saved.',
+  '/new-all starts fresh conversations for the whole crew.',
+  '/personality lists chat styles; tone never changes a teammate’s role.',
+  'Use /crew-task to turn a Crew Chat discussion into coordinated work.',
+  'F2 switches between Chat, Crew Chat, and Activity.',
+  'Up/Down browses prompt history and restores your current draft.',
+  '/queue list shows queued work and its status.',
+  'Shift+Right fills an answer for a waiting question.',
+  '/changes shows files changed by crew tasks.',
+  'Use /stop to cancel the selected task or Crew Chat discussion.',
+  'Use /personality NAME STYLE to set a teammate’s chat tone.',
+];
+export function cliTip(now = Date.now()) {
+  return `Tip: ${CLI_TIPS[Math.floor(now / 30000) % CLI_TIPS.length]}`;
+}
 function messageBody(message, width, folder, speaker) {
   let text = message.text;
   if (message.role === 'assistant' && speaker) {
@@ -34,7 +51,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   { color = false, view = 'chat', activityScroll = 0, inputCursor = Array.from(input).length, composer = null } = {}) {
   const width = Math.max(30, columns - 1);
   composer ||= layoutInput(input, inputCursor, view === 'activity' ? 'activity' : view === 'group' ? 'crew' : selected, width, Math.max(1, Math.min(5, Math.floor(rows / 5))));
-  const height = Math.max(1, rows - 13 - (composer.lines.length - 1));
+  const height = Math.max(1, rows - 14 - (composer.lines.length - 1));
   const sidebar = width >= 70 ? 23 : 0;
   const contentWidth = width - sidebar - (sidebar ? 3 : 0);
   const readingWidth = Math.max(12, Math.min(92, contentWidth - 4));
@@ -141,6 +158,7 @@ export function screen(crew, selected, input, notice, columns = 100, rows = 30, 
   }
   output.push(paint('─'.repeat(width), 'muted'), '',
     ...composer.lines.map(line => paint(fit(line, width), 'user')),
-    '', paint(fit(notice || (composer.totalRows > 1 ? `Input ${composer.hiddenBefore + 1}-${composer.hiddenBefore + composer.lines.length}/${composer.totalRows} · Up/Down Prompt history · Enter Send` : view === 'group' ? 'F2 Next tab  ·  @NAME Reply  ·  /discuss TOPIC  ·  Ctrl+K Stop' : view === 'activity' ? 'F2 Next tab  ·  Shift+F2 Previous  ·  ? Help  ·  Ctrl+C Quit' : '? Help  ·  F2 Next tab  ·  Tab Teammates / Crew Chat  ·  Enter Send  ·  Ctrl+K Stop'), width), 'muted'), '');
+    '', paint(fit(notice || (composer.totalRows > 1 ? `Input ${composer.hiddenBefore + 1}-${composer.hiddenBefore + composer.lines.length}/${composer.totalRows} · Up/Down Prompt history · Enter Send` : view === 'group' ? 'F2 Next tab  ·  @NAME Reply  ·  /discuss TOPIC  ·  Ctrl+K Stop' : view === 'activity' ? 'F2 Next tab  ·  Shift+F2 Previous  ·  ? Help  ·  Ctrl+C Quit' : '? Help  ·  F2 Next tab  ·  Tab Teammates / Crew Chat  ·  Enter Send  ·  Ctrl+K Stop'), width), 'muted'),
+    paint(fit(cliTip(), width), 'muted'), '');
   return output.join('\n');
 }

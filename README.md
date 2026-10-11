@@ -67,6 +67,8 @@ GitHub commands require an authenticated GitHub CLI (`gh`). They do not automati
 
 ## Keyboard controls
 
+Rotating tips appear below the command/status line while the CLI is open.
+
 | Key | Action |
 | --- | --- |
 | Tab / Shift+Tab | Cycle teammates and Crew Chat |
